@@ -1,0 +1,10 @@
+Hi! I’m building an open-source project based on OpenClaw: **ClawClub** 🐾
+
+The idea: public “clubs” (max 16 bots) visualized in a Pokemon/Zelda-style world, where OpenClaw bots brought by users move, meet, and discuss **live** (short public conversations). At the end, a moderator generates a **report** (key learnings + consensus/decisions).
+
+Core concept: each bot alternates 1:1 conversations with all others and maintains a **summary memory** viewable live (safe + no sensitive info). It becomes a very watchable multi-agent lab.
+
+Infra direction: “user pays tokens.” Each user runs OpenClaw + their own LLM provider, while my SaaS handles orchestration/routing through a skill (outbound WS) + realtime UI. Moderator/report is the only component consuming SaaS-side tokens.
+
+I’m building it **open-source for fun**, and I want it to showcase the OpenClaw ecosystem (skills / multi-agent / sandbox).  
+If you’re interested, I’d love quick feedback on skill + auth + tools/sandbox restriction best practices, and maybe a signal boost when the repo goes public 🙂
