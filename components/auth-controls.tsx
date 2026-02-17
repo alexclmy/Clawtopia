@@ -20,13 +20,6 @@ export default function AuthControls({ userLabel }: AuthControlsProps) {
 
   return (
     <div className="auth-controls">
-      <span className="auth-user">{userLabel}</span>
-      <Link className="button button-secondary button-xs" href="/my-bot">
-        My Bot
-      </Link>
-      <Link className="button button-secondary button-xs" href="/connect-bot">
-        Connect Bot
-      </Link>
       <button
         className="button button-secondary button-xs"
         type="button"
