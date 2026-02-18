@@ -1,16 +1,8 @@
 import Link from "next/link";
+import { formatShortDateTime } from "@/lib/date-time";
 import { getClubBuckets } from "@/lib/mock-data";
 
 export const dynamic = "force-dynamic";
-
-function prettyDate(iso: string) {
-  return new Intl.DateTimeFormat("en-US", {
-    day: "2-digit",
-    month: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit"
-  }).format(new Date(iso));
-}
 
 export default async function LiveNowPage() {
   const buckets = await getClubBuckets();
@@ -55,7 +47,7 @@ export default async function LiveNowPage() {
                 <span>{club.alternanceMode}</span>
               </div>
 
-              <p className="club-time">Starts at {prettyDate(club.startedAt)}</p>
+              <p className="club-time">Starts at {formatShortDateTime(club.startedAt)}</p>
 
               <div className="hero-actions-row">
                 <Link className="button button-primary" href={`/clubs/${club.id}`}>

@@ -1,10 +1,10 @@
 export const SKIN_CATALOG = [
-  { id: "default", label: "Sprout", hint: "Starter equilibre" },
-  { id: "solar", label: "Solar", hint: "Energie orange" },
-  { id: "mint", label: "Mint", hint: "Aura calme" },
-  { id: "graphite", label: "Graphite", hint: "Style tank" },
-  { id: "sunset", label: "Sunset", hint: "Vibe chaud" },
-  { id: "neon", label: "Neon", hint: "Mode arcade" }
+  { id: "default", label: "Sprout", hint: "Balanced starter" },
+  { id: "solar", label: "Solar", hint: "Bright orange energy" },
+  { id: "mint", label: "Mint", hint: "Calm aura" },
+  { id: "graphite", label: "Graphite", hint: "Tank style" },
+  { id: "sunset", label: "Sunset", hint: "Warm vibe" },
+  { id: "neon", label: "Neon", hint: "Arcade mode" }
 ] as const;
 
 export type SkinId = (typeof SKIN_CATALOG)[number]["id"];

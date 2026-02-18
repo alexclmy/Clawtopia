@@ -1,6 +1,8 @@
 import { promises as fs } from "fs";
 import path from "path";
+import { listBots } from "@/lib/bot-registry";
 import { normalizeSkinId } from "@/lib/skins";
+import { isSupabaseConfigured, supabaseRequest } from "@/lib/supabase-rest";
 import type { BotRegistration } from "@/types/hub";
 import type {
   BotClubTimeline,
@@ -23,7 +25,7 @@ interface ClubMembershipState {
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const CLUB_MEMBERSHIP_PATH = path.join(DATA_DIR, "club-memberships.json");
-const BOT_REGISTRY_PATH = path.join(DATA_DIR, "bot-registry.json");
+const SUPABASE_MEMBERSHIP_FIELDS = "club_id,bot_id,joined_at";
 
 const clubs: Club[] = [
   {
@@ -237,6 +239,10 @@ async function ensureClubMembershipFile() {
 }
 
 async function readMembershipState() {
+  if (isSupabaseConfigured()) {
+    return readMembershipStateSupabase();
+  }
+
   await ensureClubMembershipFile();
   const content = await fs.readFile(CLUB_MEMBERSHIP_PATH, "utf-8");
 
@@ -251,6 +257,10 @@ async function readMembershipState() {
 }
 
 async function writeMembershipState(state: ClubMembershipState) {
+  if (isSupabaseConfigured()) {
+    return;
+  }
+
   await fs.writeFile(CLUB_MEMBERSHIP_PATH, JSON.stringify(state, null, 2), "utf-8");
 }
 
@@ -263,21 +273,56 @@ function serializeWrite<T>(operation: () => Promise<T>) {
   return result;
 }
 
-interface BotRegistryState {
-  bots: BotRegistration[];
+interface SupabaseMembershipRow {
+  club_id: string;
+  bot_id: string;
+  joined_at: string;
+}
+
+function fromSupabaseMembership(row: SupabaseMembershipRow): ClubMembership {
+  return {
+    clubId: row.club_id,
+    botId: row.bot_id,
+    joinedAt: row.joined_at
+  };
+}
+
+async function readMembershipStateSupabase(): Promise<ClubMembershipState> {
+  const query = new URLSearchParams();
+  query.set("select", SUPABASE_MEMBERSHIP_FIELDS);
+  query.set("order", "joined_at.asc");
+  query.set("limit", "5000");
+
+  const rows = await supabaseRequest<SupabaseMembershipRow[]>({
+    table: "club_memberships",
+    query
+  });
+
+  return {
+    memberships: rows.map(fromSupabaseMembership)
+  };
+}
+
+async function insertMembershipSupabase(entry: ClubMembership) {
+  await supabaseRequest<SupabaseMembershipRow[]>({
+    table: "club_memberships",
+    method: "POST",
+    body: {
+      club_id: entry.clubId,
+      bot_id: entry.botId,
+      joined_at: entry.joinedAt
+    },
+    prefer: "return=representation"
+  });
 }
 
 async function readBotRegistryState() {
-  try {
-    const content = await fs.readFile(BOT_REGISTRY_PATH, "utf-8");
-    const parsed = JSON.parse(content) as BotRegistryState;
-    return (parsed.bots || []).map((bot) => ({
-      ...bot,
-      clawsTotal: typeof bot.clawsTotal === "number" ? bot.clawsTotal : 0
-    }));
-  } catch {
-    return [];
-  }
+  const bots = await listBots();
+
+  return bots.map((bot) => ({
+    ...bot,
+    clawsTotal: typeof bot.clawsTotal === "number" ? bot.clawsTotal : 0
+  }));
 }
 
 function computeSpawn(botId: string, clubId: string) {
@@ -476,13 +521,30 @@ export async function joinClub(clubId: string, bot: BotRegistration) {
       };
     }
 
-    state.memberships.push({
+    const membership: ClubMembership = {
       clubId,
       botId: bot.botId,
       joinedAt: new Date().toISOString()
-    });
+    };
 
-    await writeMembershipState(state);
+    if (isSupabaseConfigured()) {
+      try {
+        await insertMembershipSupabase(membership);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        if (message.includes("duplicate key value")) {
+          return {
+            ok: true as const,
+            alreadyMember: true as const
+          };
+        }
+
+        throw error;
+      }
+    } else {
+      state.memberships.push(membership);
+      await writeMembershipState(state);
+    }
 
     return {
       ok: true as const,

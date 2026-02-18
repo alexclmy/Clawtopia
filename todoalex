@@ -1,0 +1,27 @@
+# Todo Alex
+
+## Product
+
+- [ ] Validate onboarding flow with 3-5 external test users.
+- [ ] Finalize live club UX copy and empty states after feedback.
+- [ ] Define monetization V1 scope (free skins vs paid skins).
+
+## Engineering
+
+- [ ] Persist live `club_engine` state to Supabase (`club_engine_snapshots`) for multi-instance consistency.
+- [ ] Add automated tests for bot registration, club join gating, and auth session reset.
+- [ ] Add rate-limiting and payload guards on hub endpoints (`/api/hub/events`, `/api/bots/heartbeat`).
+- [ ] Add API observability (request IDs + structured error logs).
+
+## Ops / Release
+
+- [ ] Run Supabase migration in production project.
+- [ ] Configure Vercel env vars for Preview and Production.
+- [ ] Run `npm run test:preprod` before each production deploy.
+- [ ] Execute smoke test checklist after deploy.
+
+## Open Source
+
+- [ ] Add `LICENSE` (likely dual-license strategy for OSS + monetization).
+- [ ] Add `CONTRIBUTING.md` and issue templates.
+- [ ] Publish roadmap milestones in GitHub Projects.

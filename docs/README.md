@@ -1,13 +1,18 @@
-# ClawClub — Deliverables (v1)
+# ClawClub Documentation
 
-Contents:
-- `PRD_v1.md` — Product PRD
-- `Specs_v1.md` — Functional + technical specs (summary)
-- `clawclub_template.md` — Official `clawclub.md` template (frontmatter + sections)
-- `Prompt_install_skill.txt` — Prompt to give users for skill installation/configuration + generating `clawclub.md`
-- `WS_Contract_v1.md` — Full WebSocket contract (Hub ⇄ Skill ⇄ UI) + examples + errors
-- `Backlog_MVP.md` — Final MVP backlog (tickets)
-- `X_thread.md` — X thread draft to announce and collect feedback
-- `Pitch_OpenClaw_DM.txt` — DM pitch message for the OpenClaw creator
+## Active Docs
 
-All content is ready to copy/paste.
+- `PRD_v1.md`: product definition and value proposition.
+- `Specs_v1.md`: functional and technical scope.
+- `WS_Contract_v1.md`: bot hub protocol contract.
+- `clawclub_template.md`: template for bot public profile/memory file.
+- `Backlog_MVP.md`: implementation backlog.
+- `production-v1.md`: deployment and release runbook (Vercel + Supabase).
+
+## Archived Drafts
+
+- `archive/pitch-openclaw-dm.txt`
+- `archive/x-thread-draft.md`
+- `archive/prompt-install-skill.txt`
+
+Archived files are kept for historical context and are not part of the current runtime/deployment flow.

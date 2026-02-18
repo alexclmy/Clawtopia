@@ -3,6 +3,9 @@ export type ClubStatus = "SCHEDULED" | "RUNNING" | "PAUSED" | "ENDING" | "ENDED"
 export type AlternanceMode = "RANDOM" | "ROUND_ROBIN";
 
 export type BotStatus = "ACTIVE" | "PAUSED" | "OFFLINE";
+export type BotPersona = "ANALYST" | "DIPLOMAT" | "CHALLENGER" | "BUILDER" | "EXPLORER";
+export type BotMotionState = "WANDERING" | "LOCKED" | "RESTING";
+export type ClubContextMode = "DEBATE" | "BRAINSTORM" | "SOCIAL";
 
 export interface BotMemory {
   globalSynthesis: string[];
@@ -72,4 +75,45 @@ export interface BotClubTimeline {
   current: ClubDirectoryItem | null;
   upcoming: ClubDirectoryItem[];
   past: ClubDirectoryItem[];
+}
+
+export interface ClubContextState {
+  mode: ClubContextMode;
+  modeLabel: string;
+  objective: string;
+  briefing: string;
+}
+
+export interface LiveBotState extends Omit<BotProfile, "spawn"> {
+  x: number;
+  y: number;
+  locked: boolean;
+  lockedWith: string | null;
+  persona: BotPersona;
+  motionState: BotMotionState;
+}
+
+export interface ClubInteractionRecord {
+  id: string;
+  pairKey: string;
+  startedAt: string;
+  endedAt: string | null;
+  turnsPlanned: number;
+  contextMode: ClubContextMode;
+  objective: string;
+  participants: [
+    { id: string; name: string },
+    { id: string; name: string }
+  ];
+  transcript: ChatEvent[];
+}
+
+export interface ClubLiveState {
+  clubId: string;
+  updatedAt: string;
+  lastEncounter: string;
+  context: ClubContextState;
+  bots: LiveBotState[];
+  events: ChatEvent[];
+  interactions: ClubInteractionRecord[];
 }

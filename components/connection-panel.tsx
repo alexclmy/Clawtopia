@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { formatDateTimeOrNever } from "@/lib/date-time";
 import type { BotRegistration, StoredHubEvent } from "@/types/hub";
 
 interface ConnectionPanelProps {
@@ -8,25 +9,24 @@ interface ConnectionPanelProps {
   initialEvents: StoredHubEvent[];
 }
 
-function formatDate(iso: string | null) {
-  if (!iso) {
-    return "never";
-  }
-
-  return new Date(iso).toLocaleString("en-US");
-}
-
 export default function ConnectionPanel({ initialBot, initialEvents }: ConnectionPanelProps) {
   const [bot, setBot] = useState(initialBot);
   const [events, setEvents] = useState(initialEvents);
+  const baseUrl = useMemo(() => {
+    if (typeof window === "undefined") {
+      return "http://localhost:3000";
+    }
+
+    return window.location.origin;
+  }, []);
 
   const cURLHeartbeat = useMemo(() => {
-    return `curl -X POST http://localhost:3000/api/bots/heartbeat -H \"Authorization: Bearer ${bot.botToken}\" -H \"Content-Type: application/json\" -d '{\"status\":\"ONLINE\"}'`;
-  }, [bot.botToken]);
+    return `curl -X POST ${baseUrl}/api/bots/heartbeat -H \"Authorization: Bearer ${bot.botToken}\" -H \"Content-Type: application/json\" -d '{\"status\":\"ONLINE\"}'`;
+  }, [baseUrl, bot.botToken]);
 
   const cURLHello = useMemo(() => {
-    return `curl -X POST http://localhost:3000/api/hub/events -H \"Authorization: Bearer ${bot.botToken}\" -H \"Content-Type: application/json\" -d '{\"type\":\"BOT_HELLO\",\"client\":{\"name\":\"openclaw-skill-clawclub\",\"version\":\"1.0.0\"}}'`;
-  }, [bot.botToken]);
+    return `curl -X POST ${baseUrl}/api/hub/events -H \"Authorization: Bearer ${bot.botToken}\" -H \"Content-Type: application/json\" -d '{\"type\":\"BOT_HELLO\",\"client\":{\"name\":\"openclaw-skill-clawclub\",\"version\":\"1.0.0\"}}'`;
+  }, [baseUrl, bot.botToken]);
 
   useEffect(() => {
     const timer = window.setInterval(async () => {
@@ -61,7 +61,7 @@ export default function ConnectionPanel({ initialBot, initialEvents }: Connectio
         <p>
           Status: <strong>{bot.wsStatus}</strong>
         </p>
-        <p>Last seen: {formatDate(bot.lastSeenAt)}</p>
+        <p>Last seen: {formatDateTimeOrNever(bot.lastSeenAt)}</p>
         <p>
           Token: <code>{bot.botToken.slice(0, 20)}...{bot.botToken.slice(-10)}</code>
         </p>

@@ -11,6 +11,7 @@ interface WorldBot {
   skin: string;
   x: number;
   y: number;
+  locked?: boolean;
 }
 
 interface ClubWorldPhaserProps {
@@ -22,6 +23,7 @@ interface ClubWorldPhaserProps {
 interface BotRenderState {
   id: string;
   status: BotStatus;
+  locked: boolean;
   targetX: number;
   targetY: number;
   body: {
@@ -246,7 +248,7 @@ function createWorldController(Phaser: any, mountNode: HTMLDivElement, onSelectB
         const nextX = clamp(Phaser.Math.Linear(actor.container.x, actor.targetX, lerp), marginX, width - marginX);
         const nextY = clamp(Phaser.Math.Linear(actor.container.y, actor.targetY, lerp), marginY, height - marginY);
 
-        if (actor.status === "ACTIVE") {
+        if (actor.status === "ACTIVE" && !actor.locked) {
           const bob = Math.sin(time / 140 + actor.container.x / 180) * 0.75;
           actor.container.setPosition(nextX, clamp(nextY + bob, marginY, height - marginY));
         } else {
@@ -273,6 +275,7 @@ function createWorldController(Phaser: any, mountNode: HTMLDivElement, onSelectB
         const fill = statusTint(bot.status, skinToColor(bot.skin));
         const label = statusToLabel(bot.status);
         const existing = actorMap.get(bot.id);
+        const locked = Boolean(bot.locked);
 
         if (!existing) {
           const body = this.add.rectangle(0, 0, 30, 30, fill).setStrokeStyle(2, 0x23365d);
@@ -302,6 +305,7 @@ function createWorldController(Phaser: any, mountNode: HTMLDivElement, onSelectB
           actorMap.set(bot.id, {
             id: bot.id,
             status: bot.status,
+            locked,
             targetX: point.x,
             targetY: point.y,
             body,
@@ -313,6 +317,7 @@ function createWorldController(Phaser: any, mountNode: HTMLDivElement, onSelectB
           existing.targetX = point.x;
           existing.targetY = point.y;
           existing.status = bot.status;
+          existing.locked = locked;
           existing.body.setFillStyle(fill);
           existing.statusText.setText(label);
           existing.nameText.setText(bot.name);
@@ -473,6 +478,8 @@ export default function ClubWorldPhaser({ bots, selectedBotId, onSelectBot }: Cl
               type="button"
               className={`phaser-bot-marker phaser-bot-marker--${bot.status.toLowerCase()} phaser-bot-marker--${skin} ${
                 selectedBotId === bot.id ? "is-selected" : ""
+              } ${
+                bot.locked ? "is-locked" : ""
               }`}
               style={{ left: `${x}%`, top: `${y}%` }}
               onClick={() => onSelectBot(bot.id)}

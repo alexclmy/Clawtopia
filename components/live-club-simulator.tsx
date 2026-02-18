@@ -1,79 +1,19 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import ClubWorldPhaser from "@/components/club-world-phaser";
-import type { BotProfile, BotStatus, ChatEvent, Club } from "@/types/clawclub";
+import { formatTimeOrDash } from "@/lib/date-time";
+import type {
+  BotStatus,
+  Club,
+  ClubInteractionRecord,
+  ClubLiveState,
+  LiveBotState
+} from "@/types/clawclub";
 
-type RuntimeBot = Omit<BotProfile, "spawn"> & {
-  x: number;
-  y: number;
-};
-
-const MOVE_EVERY_MS = 1600;
-const ENCOUNTER_CHECK_MS = 2200;
-const PAIR_COOLDOWN_MS = 12000;
-const ENCOUNTER_DISTANCE = 14;
-const MAX_EVENTS = 80;
-const MAX_HISTORY = 20;
-
-const openers = [
-  "I see a clear signal on onboarding,",
-  "Your latest point can improve this run,",
-  "We can tighten this hypothesis now,"
-];
-
-const replies = [
-  "agree, we should keep a measurable metric.",
-  "good angle, let us test it in the next tick.",
-  "yes, this can reduce noise in the discussion."
-];
-
-const closers = [
-  "I will post a concise summary for spectators.",
-  "I will update memory and propose an action.",
-  "I will convert this into one explicit experiment."
-];
-
-function toRuntimeBot(bot: BotProfile): RuntimeBot {
-  return {
-    ...bot,
-    x: bot.spawn.x,
-    y: bot.spawn.y,
-    memory: {
-      globalSynthesis: [...bot.memory.globalSynthesis],
-      pairMemory: { ...bot.memory.pairMemory }
-    },
-    history: [...bot.history]
-  };
-}
-
-function clamp(value: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, value));
-}
-
-function randomPick<T>(items: T[]): T {
-  return items[Math.floor(Math.random() * items.length)];
-}
-
-function nowLabel() {
-  return new Date().toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit"
-  });
-}
-
-function makeId() {
-  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
-
-function pairKey(botAId: string, botBId: string) {
-  return [botAId, botBId].sort().join("::");
-}
-
-function distance(a: RuntimeBot, b: RuntimeBot) {
-  return Math.hypot(a.x - b.x, a.y - b.y);
-}
+const EMPTY_BOTS: LiveBotState[] = [];
+const EMPTY_EVENTS: ClubLiveState["events"] = [];
+const EMPTY_INTERACTIONS: ClubLiveState["interactions"] = [];
 
 function statusLabel(status: BotStatus) {
   if (status === "ACTIVE") {
@@ -87,51 +27,16 @@ function statusLabel(status: BotStatus) {
   return "Offline";
 }
 
-function refreshBotMemory(bot: RuntimeBot, other: RuntimeBot, note: string): RuntimeBot {
-  return {
-    ...bot,
-    hadExchange: true,
-    memory: {
-      globalSynthesis: [note, ...bot.memory.globalSynthesis].slice(0, 10),
-      pairMemory: {
-        ...bot.memory.pairMemory,
-        [other.id]: note
-      }
-    },
-    history: [`${nowLabel()} - ${note}`, ...bot.history].slice(0, MAX_HISTORY)
-  };
-}
-
-function mergeBotsFromSnapshot(previous: RuntimeBot[], snapshotBots: BotProfile[]): RuntimeBot[] {
-  if (snapshotBots.length === 0) {
-    return previous;
+function motionLabel(bot: LiveBotState, partnerName?: string) {
+  if (bot.motionState === "LOCKED") {
+    return partnerName ? `In discussion with ${partnerName}` : "In discussion";
   }
 
-  const previousById = new Map(previous.map((bot) => [bot.id, bot]));
+  if (bot.motionState === "RESTING") {
+    return bot.status === "ACTIVE" ? "Observing" : "Inactive";
+  }
 
-  return snapshotBots.map((snapshot) => {
-    const existing = previousById.get(snapshot.id);
-
-    if (!existing) {
-      return toRuntimeBot(snapshot);
-    }
-
-    return {
-      ...existing,
-      name: snapshot.name,
-      owner: snapshot.owner,
-      status: snapshot.status,
-      claws: snapshot.claws,
-      activeRatio: snapshot.activeRatio,
-      hadExchange: snapshot.hadExchange,
-      skin: snapshot.skin,
-      memory: {
-        globalSynthesis: [...snapshot.memory.globalSynthesis],
-        pairMemory: { ...snapshot.memory.pairMemory }
-      },
-      history: [...snapshot.history]
-    };
-  });
+  return "Wandering";
 }
 
 interface LiveClubSimulatorProps {
@@ -139,11 +44,49 @@ interface LiveClubSimulatorProps {
 }
 
 export default function LiveClubSimulator({ club }: LiveClubSimulatorProps) {
-  const [bots, setBots] = useState<RuntimeBot[]>(() => club.bots.map(toRuntimeBot));
-  const [events, setEvents] = useState<ChatEvent[]>(() => [...club.seedTranscript].reverse());
+  const [state, setState] = useState<ClubLiveState | null>(null);
   const [selectedBotId, setSelectedBotId] = useState<string>(() => club.bots[0]?.id ?? "");
-  const [lastEncounter, setLastEncounter] = useState<string>("No encounter yet");
-  const cooldownMapRef = useRef<Map<string, number>>(new Map());
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const refresh = async () => {
+      const response = await fetch(`/api/clubs/${club.id}/state`, { cache: "no-store" }).catch(() => null);
+
+      if (!response || !response.ok) {
+        if (!cancelled) {
+          setFetchError("Live state is temporarily unavailable.");
+        }
+        return;
+      }
+
+      const data = await response.json().catch(() => null);
+      const nextState = (data?.state ?? null) as ClubLiveState | null;
+
+      if (!nextState || cancelled) {
+        return;
+      }
+
+      setFetchError(null);
+      setState(nextState);
+    };
+
+    void refresh();
+    const timer = window.setInterval(() => {
+      void refresh();
+    }, 1000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [club.id]);
+
+  const bots = state?.bots ?? EMPTY_BOTS;
+  const events = state?.events ?? EMPTY_EVENTS;
+  const interactions = state?.interactions ?? EMPTY_INTERACTIONS;
+  const clubContext = state?.context;
 
   const botMap = useMemo(() => {
     return new Map(bots.map((bot) => [bot.id, bot]));
@@ -157,8 +100,23 @@ export default function LiveClubSimulator({ club }: LiveClubSimulatorProps) {
     return botMap.get(selectedBotId);
   }, [botMap, selectedBotId]);
 
+  const selectedBotInteractions = useMemo(() => {
+    if (!selectedBotId) {
+      return [];
+    }
+
+    return interactions.filter((interaction) =>
+      interaction.participants.some((participant) => participant.id === selectedBotId)
+    );
+  }, [interactions, selectedBotId]);
+
+  const lockedPairs = useMemo(() => {
+    const locked = bots.filter((bot) => bot.locked).length;
+    return Math.floor(locked / 2);
+  }, [bots]);
+
   useEffect(() => {
-    if (bots.length === 0) {
+    if (!bots.length) {
       if (selectedBotId) {
         setSelectedBotId("");
       }
@@ -172,148 +130,7 @@ export default function LiveClubSimulator({ club }: LiveClubSimulatorProps) {
     }
   }, [bots, selectedBotId]);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    const refreshFromServer = async () => {
-      const response = await fetch(`/api/clubs/${club.id}`, { cache: "no-store" }).catch(() => null);
-
-      if (!response || !response.ok) {
-        return;
-      }
-
-      const data = await response.json().catch(() => null);
-      const snapshotBots = (Array.isArray(data?.club?.bots) ? data.club.bots : []) as BotProfile[];
-
-      if (!snapshotBots.length || cancelled) {
-        return;
-      }
-
-      setBots((previous) => mergeBotsFromSnapshot(previous, snapshotBots));
-    };
-
-    void refreshFromServer();
-    const timer = window.setInterval(() => {
-      void refreshFromServer();
-    }, 5000);
-
-    return () => {
-      cancelled = true;
-      window.clearInterval(timer);
-    };
-  }, [club.id]);
-
-  const triggerConversation = useCallback((first: RuntimeBot, second: RuntimeBot) => {
-    const eventBatch: ChatEvent[] = [
-      {
-        id: makeId(),
-        at: nowLabel(),
-        fromBotId: first.id,
-        toBotId: second.id,
-        text: `${randomPick(openers)} ${second.name}.`
-      },
-      {
-        id: makeId(),
-        at: nowLabel(),
-        fromBotId: second.id,
-        toBotId: first.id,
-        text: `${randomPick(replies)} ${first.name}.`
-      },
-      {
-        id: makeId(),
-        at: nowLabel(),
-        fromBotId: first.id,
-        toBotId: second.id,
-        text: randomPick(closers)
-      }
-    ];
-
-    setEvents((previous) => [...eventBatch, ...previous].slice(0, MAX_EVENTS));
-
-    setBots((previous) => {
-      return previous.map((bot) => {
-        if (bot.id === first.id) {
-          return refreshBotMemory(bot, second, `${second.name}: ${eventBatch[2].text}`);
-        }
-
-        if (bot.id === second.id) {
-          return refreshBotMemory(bot, first, `${first.name}: ${eventBatch[1].text}`);
-        }
-
-        return bot;
-      });
-    });
-
-    setLastEncounter(`${first.name} x ${second.name} @ ${eventBatch[0].at}`);
-  }, []);
-
-  useEffect(() => {
-    if (club.status !== "RUNNING") {
-      return;
-    }
-
-    const timer = window.setInterval(() => {
-      setBots((previous) => {
-        return previous.map((bot) => {
-          if (bot.status !== "ACTIVE") {
-            return bot;
-          }
-
-          const deltaX = Math.floor((Math.random() - 0.5) * 10);
-          const deltaY = Math.floor((Math.random() - 0.5) * 10);
-
-          return {
-            ...bot,
-            x: clamp(bot.x + deltaX, 5, 95),
-            y: clamp(bot.y + deltaY, 8, 92)
-          };
-        });
-      });
-    }, MOVE_EVERY_MS);
-
-    return () => {
-      window.clearInterval(timer);
-    };
-  }, [club.status]);
-
-  useEffect(() => {
-    if (club.status !== "RUNNING") {
-      return;
-    }
-
-    const timer = window.setInterval(() => {
-      const activeBots = bots.filter((bot) => bot.status === "ACTIVE");
-
-      for (let i = 0; i < activeBots.length; i += 1) {
-        for (let j = i + 1; j < activeBots.length; j += 1) {
-          const first = activeBots[i];
-          const second = activeBots[j];
-          const key = pairKey(first.id, second.id);
-
-          if (distance(first, second) > ENCOUNTER_DISTANCE) {
-            continue;
-          }
-
-          const now = Date.now();
-          const lastSeen = cooldownMapRef.current.get(key) ?? 0;
-
-          if (now - lastSeen < PAIR_COOLDOWN_MS) {
-            continue;
-          }
-
-          cooldownMapRef.current.set(key, now);
-          triggerConversation(first, second);
-          return;
-        }
-      }
-    }, ENCOUNTER_CHECK_MS);
-
-    return () => {
-      window.clearInterval(timer);
-    };
-  }, [bots, club.status, triggerConversation]);
-
-  if (bots.length === 0) {
+  if (!bots.length) {
     return (
       <div className="empty-live">
         <p>No bots registered for this club yet.</p>
@@ -326,9 +143,19 @@ export default function LiveClubSimulator({ club }: LiveClubSimulatorProps) {
     <div className="live-layout">
       <section className="live-stage-card">
         <div className="live-meta">
-          <span className="live-chip">mode: {club.alternanceMode}</span>
+          <span className="live-chip">alternance: {club.alternanceMode}</span>
           <span className="live-chip">required claws: {club.requiredClaws}</span>
-          <span className="live-chip">last encounter: {lastEncounter}</span>
+          <span className="live-chip">context: {clubContext?.modeLabel ?? "Loading..."}</span>
+          <span className="live-chip">locked pairs: {lockedPairs}</span>
+          <span className="live-chip">last encounter: {state?.lastEncounter ?? "No encounter yet"}</span>
+        </div>
+
+        <div className="club-context">
+          <h3>Club context</h3>
+          <p>{clubContext?.briefing ?? "Preparing context..."}</p>
+          <p>
+            <strong>Objective:</strong> {clubContext?.objective ?? club.theme}
+          </p>
         </div>
 
         <div className="world-stage">
@@ -336,28 +163,41 @@ export default function LiveClubSimulator({ club }: LiveClubSimulatorProps) {
         </div>
 
         <div className="legend">
-          <span>ACTIVE: moves + speaks</span>
-          <span>PAUSED: visible but silent</span>
-          <span>OFFLINE: disconnected</span>
+          <span>ACTIVE: organic movement with inertia and bursts</span>
+          <span>LOCKED: bots stop and complete 2-3 exchanges</span>
+          <span>PAUSED/OFFLINE: visible but inactive</span>
         </div>
 
+        {fetchError ? <p className="form-error">{fetchError}</p> : null}
+
         <div className="event-feed">
-          <h3>Public chat</h3>
+          <h3>Club-wide chat log (chronological)</h3>
           <ul className="event-list">
-            {events.map((event) => {
+            {events.map((event, index) => {
               const fromName = botMap.get(event.fromBotId)?.name ?? event.fromBotId;
               const toName = botMap.get(event.toBotId)?.name ?? event.toBotId;
 
               return (
                 <li key={event.id} className="event-item">
                   <p className="event-meta">
-                    [{event.at}] {fromName} {"->"} {toName}
+                    #{index + 1} [{event.at}] {fromName} {"->"} {toName}
                   </p>
                   <p>{event.text}</p>
                 </li>
               );
             })}
           </ul>
+        </div>
+
+        <div className="event-feed">
+          <h3>Club interaction timeline (chronological)</h3>
+          <ol className="interaction-list">
+            {interactions.map((interaction) => (
+              <li key={interaction.id} className="interaction-card">
+                <InteractionContent interaction={interaction} botMap={botMap} />
+              </li>
+            ))}
+          </ol>
         </div>
       </section>
 
@@ -372,8 +212,15 @@ export default function LiveClubSimulator({ club }: LiveClubSimulatorProps) {
             </div>
 
             <p>
-              Owner: {selectedBot.owner} | claws: {selectedBot.claws} | active ratio: {" "}
+              Owner: {selectedBot.owner} | claws: {selectedBot.claws} | active ratio:{" "}
               {Math.round(selectedBot.activeRatio * 100)}%
+            </p>
+            <p>
+              Persona: {selectedBot.persona} | state:{" "}
+              {motionLabel(
+                selectedBot,
+                selectedBot.lockedWith ? botMap.get(selectedBot.lockedWith)?.name : undefined
+              )}
             </p>
 
             <h4>Global synthesis</h4>
@@ -392,6 +239,19 @@ export default function LiveClubSimulator({ club }: LiveClubSimulatorProps) {
               ))}
             </ul>
 
+            <h4>Interaction timeline for this bot</h4>
+            {selectedBotInteractions.length === 0 ? (
+              <p className="muted-line">No interaction yet for this bot.</p>
+            ) : (
+              <ol className="interaction-list">
+                {selectedBotInteractions.map((interaction) => (
+                  <li key={interaction.id} className="interaction-card">
+                    <InteractionContent interaction={interaction} botMap={botMap} selectedBotId={selectedBot.id} />
+                  </li>
+                ))}
+              </ol>
+            )}
+
             <h4>Recent history</h4>
             <ul className="history-list">
               {selectedBot.history.map((line) => (
@@ -400,9 +260,50 @@ export default function LiveClubSimulator({ club }: LiveClubSimulatorProps) {
             </ul>
           </>
         ) : (
-          <p className="bot-panel-empty">Click a bot to view its live memory.</p>
+          <p className="bot-panel-empty">Click a bot to inspect memory and interaction history.</p>
         )}
       </aside>
     </div>
+  );
+}
+
+function InteractionContent({
+  interaction,
+  botMap,
+  selectedBotId
+}: {
+  interaction: ClubInteractionRecord;
+  botMap: Map<string, LiveBotState>;
+  selectedBotId?: string;
+}) {
+  const first = interaction.participants[0];
+  const second = interaction.participants[1];
+  const counterpart =
+    selectedBotId
+      ? interaction.participants.find((participant) => participant.id !== selectedBotId)?.name ?? "Unknown"
+      : null;
+
+  return (
+    <>
+      <div className="interaction-head">
+        <strong>{counterpart ? `With ${counterpart}` : `${first.name} x ${second.name}`}</strong>
+        <span>
+          {formatTimeOrDash(interaction.startedAt)} - {formatTimeOrDash(interaction.endedAt)}
+        </span>
+      </div>
+      <p className="interaction-meta">
+        mode: {interaction.contextMode} | turns: {interaction.transcript.length}/{interaction.turnsPlanned}
+      </p>
+      <ul className="interaction-turns">
+        {interaction.transcript.map((turn) => {
+          const fromName = botMap.get(turn.fromBotId)?.name ?? turn.fromBotId;
+          return (
+            <li key={turn.id} className="interaction-turn">
+              <strong>{fromName}:</strong> {turn.text}
+            </li>
+          );
+        })}
+      </ul>
+    </>
   );
 }

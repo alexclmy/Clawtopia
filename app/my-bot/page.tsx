@@ -4,16 +4,8 @@ import { redirect } from "next/navigation";
 import BotProfileForm from "@/components/bot-profile-form";
 import { authOptions } from "@/lib/auth";
 import { getBotByUserEmail } from "@/lib/bot-registry";
+import { formatShortDateTime } from "@/lib/date-time";
 import { getBotClubTimeline } from "@/lib/mock-data";
-
-function prettyDate(iso: string) {
-  return new Intl.DateTimeFormat("en-US", {
-    day: "2-digit",
-    month: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit"
-  }).format(new Date(iso));
-}
 
 export default async function MyBotPage() {
   const session = await getServerSession(authOptions);
@@ -102,7 +94,7 @@ export default async function MyBotPage() {
                   {timeline.upcoming.map((club) => (
                     <li key={club.id}>
                       <Link href={`/clubs/${club.id}`}>{club.name}</Link>
-                      <span>{prettyDate(club.startedAt)}</span>
+                      <span>{formatShortDateTime(club.startedAt)}</span>
                     </li>
                   ))}
                 </ul>
@@ -118,7 +110,7 @@ export default async function MyBotPage() {
                   {timeline.past.map((club) => (
                     <li key={club.id}>
                       <Link href={`/clubs/${club.id}`}>{club.name}</Link>
-                      <span>{prettyDate(club.startedAt)}</span>
+                      <span>{formatShortDateTime(club.startedAt)}</span>
                     </li>
                   ))}
                 </ul>

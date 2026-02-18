@@ -1,16 +1,8 @@
 import Link from "next/link";
+import { formatShortDateTime } from "@/lib/date-time";
 import { getClubBuckets } from "@/lib/mock-data";
 
 export const dynamic = "force-dynamic";
-
-function prettyDate(iso: string) {
-  return new Intl.DateTimeFormat("en-US", {
-    day: "2-digit",
-    month: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit"
-  }).format(new Date(iso));
-}
 
 export default async function ClubsPage() {
   const buckets = await getClubBuckets();
@@ -60,7 +52,7 @@ export default async function ClubsPage() {
                   <span>max {club.maxBots}</span>
                   <span>{club.alternanceMode}</span>
                 </div>
-                <p className="club-time">Starts: {prettyDate(club.startedAt)}</p>
+                <p className="club-time">Starts: {formatShortDateTime(club.startedAt)}</p>
                 <Link className="button button-secondary" href={`/clubs/${club.id}`}>
                   View Club
                 </Link>
@@ -91,7 +83,7 @@ export default async function ClubsPage() {
                   <span>{club.alternanceMode}</span>
                   <span>{club.durationHours}h</span>
                 </div>
-                <p className="club-time">Started at {prettyDate(club.startedAt)}</p>
+                <p className="club-time">Started at {formatShortDateTime(club.startedAt)}</p>
                 <Link className="button button-secondary" href={`/clubs/${club.id}`}>
                   Open
                 </Link>
