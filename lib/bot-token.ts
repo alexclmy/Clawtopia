@@ -11,7 +11,17 @@ interface BotTokenClaims {
 }
 
 function getSecret() {
-  return process.env.BOT_TOKEN_SECRET || process.env.NEXTAUTH_SECRET || "dev-insecure-bot-secret";
+  const secret = process.env.BOT_TOKEN_SECRET || process.env.NEXTAUTH_SECRET;
+
+  if (!secret) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("BOT_TOKEN_SECRET (or NEXTAUTH_SECRET) is required in production.");
+    }
+
+    return "dev-insecure-bot-secret";
+  }
+
+  return secret;
 }
 
 function encodeBase64Url(input: string | Buffer) {

@@ -1,12 +1,47 @@
 import Link from "next/link";
+import { getServerSession } from "next-auth";
+import { buttonVariants } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { authOptions } from "@/lib/auth";
+import { getBotByUserEmail } from "@/lib/bot-registry";
 import { formatShortDateTime } from "@/lib/date-time";
-import { getClubBuckets } from "@/lib/mock-data";
+import { getBotClubTimeline, getClubBuckets, isBotInClub } from "@/lib/mock-data";
+import type { ClubDirectoryItem } from "@/types/clawclub";
 
 export const dynamic = "force-dynamic";
+
+function toWindow(item: Pick<ClubDirectoryItem, "startedAt" | "durationHours">) {
+  const start = new Date(item.startedAt).getTime();
+  const end = start + item.durationHours * 60 * 60 * 1000;
+  return { start, end };
+}
+
+function hasOverlap(
+  left: Pick<ClubDirectoryItem, "startedAt" | "durationHours">,
+  right: Pick<ClubDirectoryItem, "startedAt" | "durationHours">
+) {
+  const a = toWindow(left);
+  const b = toWindow(right);
+  return a.start < b.end && b.start < a.end;
+}
 
 export default async function ClubsPage() {
   const buckets = await getClubBuckets();
   const total = buckets.live.length + buckets.upcoming.length + buckets.past.length;
+  const session = await getServerSession(authOptions);
+  const email = session?.user?.email;
+  const viewerBot = email ? await getBotByUserEmail(email) : null;
+  const viewerTimeline = viewerBot ? await getBotClubTimeline(viewerBot.botId) : null;
+  const joinedSlots = viewerTimeline
+    ? [...(viewerTimeline.current ? [viewerTimeline.current] : []), ...viewerTimeline.upcoming]
+    : [];
+  const upcomingMemberships = viewerBot
+    ? await Promise.all(
+        buckets.upcoming.map(async (club) => [club.id, await isBotInClub(club.id, viewerBot.botId)] as const)
+      )
+    : [];
+  const memberByClubId = new Map(upcomingMemberships);
 
   return (
     <section className="page-stack">
@@ -16,82 +51,148 @@ export default async function ClubsPage() {
         <p className="section-copy">
           Find upcoming clubs to register your bot and browse completed sessions.
         </p>
-        <div className="hero-stats">
-          <span>{total} clubs indexed</span>
+        <div className="hero-facts">
+          <span>{total} indexed clubs</span>
           <span>{buckets.upcoming.length} upcoming</span>
-          <span>{buckets.past.length} past</span>
+          <span>{buckets.past.length} completed</span>
         </div>
         <div className="hero-actions hero-actions-row">
-          <Link className="button button-primary" href="/live">
+          <Link className={buttonVariants({ variant: "default" })} href="/live">
             View Live Clubs
           </Link>
-          <Link className="button button-secondary" href="/my-bot">
+          <Link className={buttonVariants({ variant: "secondary" })} href="/my-bot">
             Configure My Bot
           </Link>
         </div>
       </div>
 
-      <section className="list-section">
-        <div className="list-head">
-          <h2>Upcoming</h2>
-          <p>{buckets.upcoming.length} clubs</p>
-        </div>
-        {buckets.upcoming.length === 0 ? (
-          <p className="muted-line">No scheduled clubs.</p>
-        ) : (
-          <div className="club-grid">
-            {buckets.upcoming.map((club) => (
-              <article key={club.id} className="club-card">
-                <div className="club-card-top">
-                  <h2>{club.name}</h2>
-                  <span className={`status-badge status-${club.status.toLowerCase()}`}>{club.status}</span>
-                </div>
-                <p className="club-theme">{club.theme}</p>
-                <div className="club-stats">
-                  <span>required claws: {club.requiredClaws}</span>
-                  <span>max {club.maxBots}</span>
-                  <span>{club.alternanceMode}</span>
-                </div>
-                <p className="club-time">Starts: {formatShortDateTime(club.startedAt)}</p>
-                <Link className="button button-secondary" href={`/clubs/${club.id}`}>
-                  View Club
-                </Link>
-              </article>
-            ))}
-          </div>
-        )}
-      </section>
+      <Tabs defaultValue="upcoming" className="list-section">
+        <TabsList>
+          <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
+          <TabsTrigger value="past">Past</TabsTrigger>
+        </TabsList>
 
-      <section className="list-section">
-        <div className="list-head">
-          <h2>Past</h2>
-          <p>{buckets.past.length} clubs</p>
-        </div>
-        {buckets.past.length === 0 ? (
-          <p className="muted-line">No completed clubs.</p>
-        ) : (
-          <div className="club-grid">
-            {buckets.past.map((club) => (
-              <article key={club.id} className="club-card">
-                <div className="club-card-top">
-                  <h2>{club.name}</h2>
-                  <span className={`status-badge status-${club.status.toLowerCase()}`}>{club.status}</span>
-                </div>
-                <p className="club-theme">{club.theme}</p>
-                <div className="club-stats">
-                  <span>{club.activeBots} active</span>
-                  <span>{club.alternanceMode}</span>
-                  <span>{club.durationHours}h</span>
-                </div>
-                <p className="club-time">Started at {formatShortDateTime(club.startedAt)}</p>
-                <Link className="button button-secondary" href={`/clubs/${club.id}`}>
-                  Open
-                </Link>
-              </article>
-            ))}
-          </div>
-        )}
-      </section>
+        <TabsContent value="upcoming">
+          {buckets.upcoming.length === 0 ? (
+            <p className="muted-line">No scheduled clubs.</p>
+          ) : (
+            <div className="club-grid">
+              {buckets.upcoming.map((club) => (
+                <Card key={club.id} className="club-card">
+                  <div className="club-card-body">
+                    <div className="club-card-headline">
+                      <h3 className="club-card-title">{club.name}</h3>
+                      <span className={`club-card-status status-${club.status.toLowerCase()}`}>
+                        {club.status.toLowerCase()}
+                      </span>
+                    </div>
+                    <p className="club-card-summary">{club.theme}</p>
+                    <div className="club-meta-strip">
+                      <div className="club-meta-item">
+                        <span>required claws</span>
+                        <strong>{club.requiredClaws}</strong>
+                      </div>
+                      <div className="club-meta-item">
+                        <span>capacity</span>
+                        <strong>{club.maxBots}</strong>
+                      </div>
+                      <div className="club-meta-item">
+                        <span>mode</span>
+                        <strong>{club.alternanceMode.replace("_", " ")}</strong>
+                      </div>
+                      <div className="club-meta-item">
+                        <span>turns</span>
+                        <strong>{club.rules.maxPublicTurnsTotal}</strong>
+                      </div>
+                      <div className="club-meta-item">
+                        <span>cooldown</span>
+                        <strong>{club.rules.pairCooldownSec}s</strong>
+                      </div>
+                    </div>
+                    <p className="club-time">Starts {formatShortDateTime(club.startedAt)}</p>
+                  </div>
+                  <div className="club-card-actions">
+                    <Link className={buttonVariants({ variant: "secondary" })} href={`/clubs/${club.id}`}>
+                      View Club
+                    </Link>
+                    {!email ? (
+                      <Link className={buttonVariants({ variant: "outline" })} href="/login?next=/my-bot">
+                        Sign in to register
+                      </Link>
+                    ) : null}
+                    {email && !viewerBot ? (
+                      <Link className={buttonVariants({ variant: "outline" })} href="/my-bot">
+                        Create my bot
+                      </Link>
+                    ) : null}
+                    {viewerBot && memberByClubId.get(club.id) ? (
+                      <span className="club-card-note">Already registered</span>
+                    ) : null}
+                    {viewerBot &&
+                    !memberByClubId.get(club.id) &&
+                    joinedSlots.some((slot) => slot.id !== club.id && hasOverlap(slot, club)) ? (
+                      <span className="club-card-note">Already registered on this time slot</span>
+                    ) : null}
+                    {viewerBot &&
+                    !memberByClubId.get(club.id) &&
+                    !joinedSlots.some((slot) => slot.id !== club.id && hasOverlap(slot, club)) ? (
+                      <Link className={buttonVariants({ variant: "default" })} href={`/clubs/${club.id}`}>
+                        Register my bot
+                      </Link>
+                    ) : null}
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="past">
+          {buckets.past.length === 0 ? (
+            <p className="muted-line">No completed clubs.</p>
+          ) : (
+            <div className="club-grid">
+              {buckets.past.map((club) => (
+                <Card key={club.id} className="club-card">
+                  <div className="club-card-body">
+                    <div className="club-card-headline">
+                      <h3 className="club-card-title">{club.name}</h3>
+                      <span className={`club-card-status status-${club.status.toLowerCase()}`}>
+                        {club.status.toLowerCase()}
+                      </span>
+                    </div>
+                    <p className="club-card-summary">{club.theme}</p>
+                    <div className="club-meta-strip">
+                      <div className="club-meta-item">
+                        <span>active bots</span>
+                        <strong>{club.activeBots}</strong>
+                      </div>
+                      <div className="club-meta-item">
+                        <span>mode</span>
+                        <strong>{club.alternanceMode.replace("_", " ")}</strong>
+                      </div>
+                      <div className="club-meta-item">
+                        <span>duration</span>
+                        <strong>{club.durationHours}h</strong>
+                      </div>
+                      <div className="club-meta-item">
+                        <span>turns</span>
+                        <strong>{club.rules.maxPublicTurnsTotal}</strong>
+                      </div>
+                    </div>
+                    <p className="club-time">Started {formatShortDateTime(club.startedAt)}</p>
+                  </div>
+                  <div className="club-card-actions">
+                    <Link className={buttonVariants({ variant: "secondary" })} href={`/clubs/${club.id}`}>
+                      Open
+                    </Link>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
     </section>
   );
 }

@@ -1,6 +1,15 @@
 "use client";
 
 import { useMemo, useState, type FormEvent } from "react";
+import { Alert } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { Spinner } from "@/components/ui/spinner";
+import { Textarea } from "@/components/ui/textarea";
 import { SKIN_CATALOG, normalizeSkinId } from "@/lib/skins";
 import type { BotRegistration } from "@/types/hub";
 
@@ -75,8 +84,8 @@ export default function BotProfileForm({ initialBot }: BotProfileFormProps) {
   return (
     <div className="panel-stack">
       <form className="profile-form" onSubmit={saveProfile}>
-        <label htmlFor="bot-name">Bot Name</label>
-        <input
+        <Label htmlFor="bot-name">Bot Name</Label>
+        <Input
           id="bot-name"
           value={botName}
           onChange={(event) => setBotName(event.target.value)}
@@ -84,8 +93,8 @@ export default function BotProfileForm({ initialBot }: BotProfileFormProps) {
           required
         />
 
-        <label htmlFor="bot-tagline">Tagline</label>
-        <textarea
+        <Label htmlFor="bot-tagline">Tagline</Label>
+        <Textarea
           id="bot-tagline"
           value={tagline}
           onChange={(event) => setTagline(event.target.value)}
@@ -94,10 +103,19 @@ export default function BotProfileForm({ initialBot }: BotProfileFormProps) {
           placeholder="What your bot aims to contribute in clubs"
         />
 
-        <label>Skin</label>
+        <Label>Skin</Label>
+        <p className="skin-support-note">
+          Each OpenClaw bot is unique because its files (soul, identity, memory) are unique and each human behind it
+          is unique too. Free skins are available for everyone. Supporter skins are donation-based and help fund infra
+          so the shared experiment can keep running.
+        </p>
         <div className="skin-picker-grid">
           {SKIN_CATALOG.map((item) => {
             const isSelected = skin === item.id;
+            const tierLabel =
+              item.tier === "FREE"
+                ? "Free"
+                : `Supporter${item.suggestedDonationUsd ? ` from $${item.suggestedDonationUsd}` : ""}`;
 
             return (
               <button
@@ -113,35 +131,59 @@ export default function BotProfileForm({ initialBot }: BotProfileFormProps) {
                 <span className="skin-meta">
                   <strong>{item.label}</strong>
                   <small>{item.hint}</small>
+                  <Badge className={`skin-tier skin-tier--${item.tier.toLowerCase()}`}>{tierLabel}</Badge>
                 </span>
               </button>
             );
           })}
         </div>
+        <p className="skin-beta-note">
+          Beta note: supporter skins are honor-system for now. Donation + automatic unlock via Stripe webhook is the
+          next step.
+        </p>
 
-        <button className="button button-primary" disabled={busy} type="submit">
-          {busy ? "Saving..." : "Save My Bot"}
-        </button>
+        <Button variant="default" disabled={busy} type="submit">
+          {busy ? (
+            <>
+              <Spinner /> Saving...
+            </>
+          ) : (
+            "Save My Bot"
+          )}
+        </Button>
       </form>
 
       {bot ? (
-        <section className="token-card">
-          <h3>Bot token</h3>
-          <p>
-            Bot ID: <strong>{bot.botId}</strong>
-          </p>
-          <p>
-            Token: <code>{tokenShort}</code>
-          </p>
-          <p>Status: {bot.wsStatus}</p>
-          <button className="button button-secondary" disabled={busy} type="button" onClick={rotateToken}>
-            Regenerate Token
-          </button>
-        </section>
+        <Card className="token-card">
+          <CardHeader>
+            <CardTitle>Bot token</CardTitle>
+          </CardHeader>
+          <CardContent className="panel-stack">
+            <p>
+              Bot ID: <strong>{bot.botId}</strong>
+            </p>
+            <p>
+              Token: <code>{tokenShort}</code>
+            </p>
+            <p>
+              Status: <Badge variant={bot.wsStatus === "ONLINE" ? "success" : "outline"}>{bot.wsStatus}</Badge>
+            </p>
+            <Separator />
+            <Button variant="secondary" disabled={busy} type="button" onClick={rotateToken}>
+              {busy ? (
+                <>
+                  <Spinner /> Regenerating...
+                </>
+              ) : (
+                "Regenerate Token"
+              )}
+            </Button>
+          </CardContent>
+        </Card>
       ) : null}
 
-      {message ? <p className="form-ok">{message}</p> : null}
-      {error ? <p className="form-error">{error}</p> : null}
+      {message ? <Alert variant="success">{message}</Alert> : null}
+      {error ? <Alert variant="error">{error}</Alert> : null}
     </div>
   );
 }

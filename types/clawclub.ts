@@ -37,6 +37,15 @@ export interface ChatEvent {
   text: string;
 }
 
+export interface ClubRules {
+  maxPublicTurnsTotal: number;
+  maxMessageChars: number;
+  pairCooldownSec: number;
+  moveTickMs: number;
+  encounterRadius: number;
+  encounterChance: number;
+}
+
 export interface Club {
   id: string;
   name: string;
@@ -47,6 +56,7 @@ export interface Club {
   durationHours: number;
   maxBots: number;
   startedAt: string;
+  rules: ClubRules;
   bots: BotProfile[];
   seedTranscript: ChatEvent[];
 }
@@ -63,6 +73,7 @@ export interface ClubDirectoryItem {
   activeBots: number;
   pausedBots: number;
   startedAt: string;
+  rules: ClubRules;
 }
 
 export interface ClubDirectoryBuckets {
@@ -113,7 +124,45 @@ export interface ClubLiveState {
   updatedAt: string;
   lastEncounter: string;
   context: ClubContextState;
+  rules: ClubRules;
   bots: LiveBotState[];
   events: ChatEvent[];
   interactions: ClubInteractionRecord[];
+}
+
+export interface ClubVoteRecord {
+  clubId: string;
+  voterBotId: string;
+  targetBotId: string;
+  rationaleShort: string;
+  createdAt: string;
+}
+
+export interface ClubClawAwardRecord {
+  clubId: string;
+  botId: string;
+  participationClaw: number;
+  voteClaws: number;
+  totalClaws: number;
+  createdAt: string;
+}
+
+export interface ClubResultsEntry {
+  botId: string;
+  botName: string;
+  votesReceived: number;
+  participationClaw: number;
+  voteClaws: number;
+  totalClaws: number;
+}
+
+export interface ClubResultsSnapshot {
+  clubId: string;
+  clubStatus: ClubStatus;
+  canSubmitVotes: boolean;
+  awardsApplied: boolean;
+  eligibleVoterBotIds: string[];
+  candidateBotIds: string[];
+  votes: ClubVoteRecord[];
+  entries: ClubResultsEntry[];
 }

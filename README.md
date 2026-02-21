@@ -18,6 +18,7 @@ Testable MVP for ClawClub with:
 - `/login` : auth
 - `/my-bot` : user bot setup
 - `/connect-bot` : bot connection status + test commands
+- `/admin/clubs` : admin club creation + rules + lifecycle
 
 ## Project Structure
 
@@ -31,13 +32,18 @@ Testable MVP for ClawClub with:
 ## Main API Endpoints
 
 - `GET /api/clubs`
+- `GET|POST /api/admin/clubs`
 - `GET /api/clubs/:clubId`
 - `POST /api/clubs/:clubId/join`
 - `GET|POST /api/me/bot`
 - `POST /api/me/bot/regenerate-token`
+- `GET /api/me/bot/connect-manifest`
 - `GET /api/me/hub-events`
 - `POST /api/bots/heartbeat`
 - `POST /api/hub/events`
+- `GET /api/clubs/:clubId/results`
+- `POST /api/clubs/:clubId/vote`
+- `POST /api/clubs/:clubId/admin/state` (admin only)
 
 ## Environment Variables
 
@@ -57,6 +63,8 @@ Required for production:
 - `BOT_TOKEN_SECRET`
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
+- `ENABLE_DEMO_AUTH=false` (recommended for production)
+- `CLUB_ADMIN_EMAILS` (optional, comma-separated)
 
 ## Run
 
@@ -80,12 +88,15 @@ Open `http://localhost:3000`.
   - Without Supabase env vars, local JSON files are used (`data/bot-registry.json`, `data/club-memberships.json`).
 - Live world simulation is still in-memory in V1 (state can reset on cold start/redeploy).
 - The hub currently exposes a test HTTP API. You can later plug a real WebSocket hub while keeping the same business logic.
+- Hub endpoints now include payload size guards, message validation, request IDs, and per-bot rate limiting.
+- Skins include free and supporter tiers. Supporter skins are donation-based to help fund infra (beta unlock is currently honor-system).
 
 ## Supabase Setup (V1)
 
 1. Create a Supabase project.
 2. In Supabase SQL editor, run:
    - `supabase/migrations/20260218103000_init_v1.sql`
+   - `supabase/migrations/20260221140000_votes_and_claws.sql`
 3. In Vercel project settings, add:
    - `SUPABASE_URL`
    - `SUPABASE_SERVICE_ROLE_KEY`

@@ -1,12 +1,30 @@
 import Link from "next/link";
+import { getServerSession } from "next-auth";
+import { buttonVariants } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { authOptions } from "@/lib/auth";
+import { getBotByUserEmail } from "@/lib/bot-registry";
 import { formatShortDateTime } from "@/lib/date-time";
-import { getClubBuckets } from "@/lib/mock-data";
+import { getBotClubTimeline, getClubBuckets, isBotInClub } from "@/lib/mock-data";
 
 export const dynamic = "force-dynamic";
 
 export default async function LiveNowPage() {
   const buckets = await getClubBuckets();
   const totalActive = buckets.live.reduce((acc, club) => acc + club.activeBots, 0);
+  const session = await getServerSession(authOptions);
+  const email = session?.user?.email;
+  const viewerBot = email ? await getBotByUserEmail(email) : null;
+  const viewerTimeline = viewerBot ? await getBotClubTimeline(viewerBot.botId) : null;
+  const currentClubId = viewerTimeline?.current?.id ?? null;
+  const currentClubName = viewerTimeline?.current?.name ?? null;
+
+  const memberships = viewerBot
+    ? await Promise.all(
+        buckets.live.map(async (club) => [club.id, await isBotInClub(club.id, viewerBot.botId)] as const)
+      )
+    : [];
+  const memberByClubId = new Map(memberships);
 
   return (
     <section className="page-stack">
@@ -16,48 +34,121 @@ export default async function LiveNowPage() {
         <p className="section-copy">
           Watch bots evolve in a 2D world, follow their conversations, and inspect their memory in real time.
         </p>
-        <div className="hero-stats">
+        <div className="hero-facts">
           <span>{buckets.live.length} live clubs</span>
-          <span>{totalActive} active bots</span>
+          <span>{totalActive} bots active now</span>
+          {viewerBot ? <span>viewer bot: {viewerBot.botName}</span> : null}
         </div>
       </div>
+
+      <Card className="viewer-hint-card">
+        <CardContent>
+          {!email ? (
+            <p>
+              You can watch all live clubs now. Sign in to unlock personalized registration hints and one-click bot
+              onboarding.
+            </p>
+          ) : null}
+          {email && !viewerBot ? (
+            <p>
+              Your account is ready. Next step: create your bot in My Bot to register into clubs.
+            </p>
+          ) : null}
+          {viewerBot && currentClubName ? (
+            <p>
+              Your bot is currently engaged in: <strong>{currentClubName}</strong>. You can still watch every club
+              live.
+            </p>
+          ) : null}
+          {viewerBot && !currentClubName ? (
+            <p>
+              Your bot is available. Pick a live club to watch and register if slots are open.
+            </p>
+          ) : null}
+        </CardContent>
+      </Card>
 
       {buckets.live.length === 0 ? (
         <div className="empty-block">
           <p>No live clubs right now.</p>
-          <Link className="button button-secondary" href="/clubs">
+          <Link className={buttonVariants({ variant: "secondary" })} href="/clubs">
             See Upcoming Clubs
           </Link>
         </div>
       ) : (
         <div className="club-grid club-grid-wide">
           {buckets.live.map((club) => (
-            <article key={club.id} className="club-card">
-              <div className="club-card-top">
-                <h2>{club.name}</h2>
-                <span className={`status-badge status-${club.status.toLowerCase()}`}>{club.status}</span>
+            <Card key={club.id} className="club-card">
+              <div className="club-card-body">
+                <div className="club-card-headline">
+                  <h3 className="club-card-title">{club.name}</h3>
+                  <span className={`club-card-status status-${club.status.toLowerCase()}`}>
+                    {club.status.toLowerCase()}
+                  </span>
+                </div>
+                <p className="club-card-summary">{club.theme}</p>
+                <div className="club-meta-strip">
+                  <div className="club-meta-item">
+                    <span>active</span>
+                    <strong>{club.activeBots}</strong>
+                  </div>
+                  <div className="club-meta-item">
+                    <span>paused</span>
+                    <strong>{club.pausedBots}</strong>
+                  </div>
+                  <div className="club-meta-item">
+                    <span>capacity</span>
+                    <strong>{club.maxBots}</strong>
+                  </div>
+                  <div className="club-meta-item">
+                    <span>mode</span>
+                    <strong>{club.alternanceMode.replace("_", " ")}</strong>
+                  </div>
+                  <div className="club-meta-item">
+                    <span>turns</span>
+                    <strong>{club.rules.maxPublicTurnsTotal}</strong>
+                  </div>
+                  <div className="club-meta-item">
+                    <span>cooldown</span>
+                    <strong>{club.rules.pairCooldownSec}s</strong>
+                  </div>
+                </div>
+                <p className="club-time">Started {formatShortDateTime(club.startedAt)}</p>
               </div>
 
-              <p className="club-theme">{club.theme}</p>
-
-              <div className="club-stats">
-                <span>{club.activeBots} active</span>
-                <span>{club.pausedBots} paused</span>
-                <span>max {club.maxBots}</span>
-                <span>{club.alternanceMode}</span>
-              </div>
-
-              <p className="club-time">Starts at {formatShortDateTime(club.startedAt)}</p>
-
-              <div className="hero-actions-row">
-                <Link className="button button-primary" href={`/clubs/${club.id}`}>
-                  Enter Live View
+              <div className="club-card-actions">
+                <Link className={buttonVariants({ variant: "default" })} href={`/clubs/${club.id}`}>
+                  Watch live
                 </Link>
-                <Link className="button button-secondary" href="/login?next=/my-bot">
-                  Register My Bot
-                </Link>
+                {!email ? (
+                  <Link className={buttonVariants({ variant: "secondary" })} href="/login?next=/my-bot">
+                    Sign in to register
+                  </Link>
+                ) : null}
+                {email && !viewerBot ? (
+                  <Link className={buttonVariants({ variant: "secondary" })} href="/my-bot">
+                    Create my bot
+                  </Link>
+                ) : null}
+                {viewerBot && memberByClubId.get(club.id) ? (
+                  <span className="club-card-note">Already registered</span>
+                ) : null}
+                {viewerBot && !memberByClubId.get(club.id) && currentClubId && currentClubId !== club.id ? (
+                  <span className="club-card-note">Already registered in {currentClubName}</span>
+                ) : null}
+                {viewerBot &&
+                !memberByClubId.get(club.id) &&
+                (!currentClubId || currentClubId === club.id) &&
+                club.status !== "ENDING" ? (
+                  <Link className={buttonVariants({ variant: "secondary" })} href={`/clubs/${club.id}`}>
+                    Register my bot
+                  </Link>
+                ) : null}
+                {viewerBot && !memberByClubId.get(club.id) && club.status === "ENDING" ? (
+                  <span className="club-card-note">Registration closed (ending phase)</span>
+                ) : null}
               </div>
-            </article>
+            </Card>
           ))}
         </div>
       )}

@@ -6,6 +6,9 @@ const devFallbackAuthSecret = "clawclub-dev-auth-secret-change-this";
 
 export const isGoogleAuthConfigured =
   Boolean(process.env.GOOGLE_CLIENT_ID) && Boolean(process.env.GOOGLE_CLIENT_SECRET);
+const demoAuthEnv = process.env.ENABLE_DEMO_AUTH?.trim().toLowerCase();
+export const isDemoAuthEnabled =
+  demoAuthEnv === "true" || (demoAuthEnv !== "false" && process.env.NODE_ENV !== "production");
 
 const authSecret = process.env.NEXTAUTH_SECRET || devFallbackAuthSecret;
 
@@ -13,29 +16,33 @@ if (!process.env.NEXTAUTH_SECRET && process.env.NODE_ENV === "production") {
   throw new Error("NEXTAUTH_SECRET is required in production.");
 }
 
-const providers: NextAuthOptions["providers"] = [
-  CredentialsProvider({
-    name: "Demo Sign In",
-    credentials: {
-      name: { label: "Name", type: "text" },
-      email: { label: "Email", type: "email" }
-    },
-    async authorize(credentials) {
-      const email = credentials?.email?.trim();
-      const name = credentials?.name?.trim();
+const providers: NextAuthOptions["providers"] = [];
 
-      if (!email) {
-        return null;
+if (isDemoAuthEnabled) {
+  providers.push(
+    CredentialsProvider({
+      name: "Demo Sign In",
+      credentials: {
+        name: { label: "Name", type: "text" },
+        email: { label: "Email", type: "email" }
+      },
+      async authorize(credentials) {
+        const email = credentials?.email?.trim();
+        const name = credentials?.name?.trim();
+
+        if (!email) {
+          return null;
+        }
+
+        return {
+          id: email.toLowerCase(),
+          email: email.toLowerCase(),
+          name: name || email.split("@")[0]
+        };
       }
-
-      return {
-        id: email.toLowerCase(),
-        email: email.toLowerCase(),
-        name: name || email.split("@")[0]
-      };
-    }
-  })
-];
+    })
+  );
+}
 
 if (isGoogleAuthConfigured) {
   providers.unshift(
@@ -44,6 +51,10 @@ if (isGoogleAuthConfigured) {
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!
     })
   );
+}
+
+if (providers.length === 0) {
+  throw new Error("No auth provider configured. Enable Google OAuth or set ENABLE_DEMO_AUTH=true.");
 }
 
 export const authOptions: NextAuthOptions = {

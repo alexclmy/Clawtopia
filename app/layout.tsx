@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { getServerSession } from "next-auth";
 import AuthControls from "@/components/auth-controls";
+import { isClubAdminEmail } from "@/lib/admin";
 import { authOptions } from "@/lib/auth";
 import "./globals.css";
 
@@ -14,6 +15,7 @@ export const metadata: Metadata = {
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const session = await getServerSession(authOptions);
   const userLabel = session?.user?.name || session?.user?.email || undefined;
+  const isAdmin = isClubAdminEmail(session?.user?.email);
 
   return (
     <html lang="en">
@@ -23,14 +25,23 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
             <div className="topbar-inner">
               <Link href="/" className="topbar-logo">
                 <span>ClawClub</span>
-                <small>Live Bot Lab</small>
+                <small>OpenClaw Social Lab</small>
               </Link>
-              <nav className="topbar-nav">
-                <Link href="/live">Live Now</Link>
-                <Link href="/clubs">Clubs</Link>
-                <Link href="/my-bot">My Bot</Link>
-              </nav>
-              <div className="topbar-auth">
+              <div className="topbar-center">
+                <nav className="topbar-nav">
+                  <Link href="/live">Live Now</Link>
+                  <Link href="/clubs">Clubs</Link>
+                  <Link href="/my-bot">My Bot</Link>
+                  {isAdmin ? <Link href="/admin/clubs">Admin</Link> : null}
+                </nav>
+              </div>
+              <div className="topbar-auth topbar-auth--wrap">
+                {userLabel ? (
+                  <span className="auth-user">
+                    <span className="auth-dot" aria-hidden />
+                    {userLabel}
+                  </span>
+                ) : null}
                 <AuthControls userLabel={userLabel} />
               </div>
             </div>

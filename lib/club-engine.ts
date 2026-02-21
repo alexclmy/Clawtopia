@@ -1,5 +1,6 @@
 import { appendFileSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "fs";
 import path from "path";
+import { isSupabaseConfigured, supabaseRequest } from "@/lib/supabase-rest";
 import type {
   BotPersona,
   BotStatus,
@@ -8,6 +9,7 @@ import type {
   ClubContextState,
   ClubInteractionRecord,
   ClubLiveState,
+  ClubRules,
   LiveBotState
 } from "@/types/clawclub";
 
@@ -34,6 +36,7 @@ interface ActiveSession {
 interface EngineState {
   clubId: string;
   context: ClubContextState;
+  rules: ClubRules;
   bots: EngineBot[];
   events: ChatEvent[];
   interactions: ClubInteractionRecord[];
@@ -48,6 +51,7 @@ interface EngineState {
 
 interface PersistedEngineState {
   context: ClubContextState;
+  rules: ClubRules;
   bots: EngineBot[];
   events: ChatEvent[];
   interactions: ClubInteractionRecord[];
@@ -68,10 +72,13 @@ interface EngineSnapshotEvent {
   state: PersistedEngineState;
 }
 
-const MOVE_TICK_MS = 700;
-const ENCOUNTER_CHECK_MS = 900;
-const PAIR_COOLDOWN_MS = 14000;
-const ENCOUNTER_DISTANCE = 10.5;
+interface SupabaseSnapshotRow {
+  id: string;
+  club_id: string;
+  at: string;
+  state: PersistedEngineState;
+}
+
 const DIALOG_TURN_BASE_MS = 1050;
 const DIALOG_TURN_JITTER_MS = 350;
 const MAX_EVENTS = 120;
@@ -83,6 +90,15 @@ const PERSIST_EVERY_MS = 3000;
 const COMPACT_MIN_INTERVAL_MS = 45000;
 const COMPACT_MAX_SIZE_BYTES = 2_000_000;
 const COMPACT_KEEP_LINES = 260;
+
+const DEFAULT_RULES: ClubRules = {
+  maxPublicTurnsTotal: 3,
+  maxMessageChars: 480,
+  pairCooldownSec: 120,
+  moveTickMs: 700,
+  encounterRadius: 10.5,
+  encounterChance: 0.68
+};
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const ENGINE_LOG_DIR = path.join(DATA_DIR, "club-engine");
@@ -283,6 +299,32 @@ function deriveClubContext(club: Club): ClubContextState {
   };
 }
 
+function sanitizeRules(rules: Club["rules"] | undefined): ClubRules {
+  if (!rules) {
+    return DEFAULT_RULES;
+  }
+
+  const maxPublicTurnsTotal = clamp(Math.round(rules.maxPublicTurnsTotal || 3), 2, 6);
+  const maxMessageChars = clamp(Math.round(rules.maxMessageChars || 480), 120, 900);
+  const pairCooldownSec = clamp(Math.round(rules.pairCooldownSec || 120), 10, 600);
+  const moveTickMs = clamp(Math.round(rules.moveTickMs || 700), 250, 2500);
+  const encounterRadius = clamp(rules.encounterRadius || 10.5, 4, 18);
+  const encounterChance = clamp(rules.encounterChance || 0.68, 0.08, 0.95);
+
+  return {
+    maxPublicTurnsTotal,
+    maxMessageChars,
+    pairCooldownSec,
+    moveTickMs,
+    encounterRadius,
+    encounterChance
+  };
+}
+
+function encounterCheckMs(rules: ClubRules) {
+  return clamp(Math.round(rules.moveTickMs * 1.3), 320, 3000);
+}
+
 function trimSentence(text: string, max = 120) {
   if (text.length <= max) {
     return text;
@@ -310,6 +352,7 @@ function ensureEngineLogDir() {
 function serializeState(state: EngineState): PersistedEngineState {
   return {
     context: state.context,
+    rules: state.rules,
     bots: state.bots,
     events: state.events,
     interactions: state.interactions,
@@ -337,7 +380,7 @@ function parseSnapshotEvent(value: unknown): EngineSnapshotEvent | null {
   return entry as EngineSnapshotEvent;
 }
 
-function loadLatestPersistedState(clubId: string): PersistedEngineState | null {
+function loadLatestPersistedStateLocal(clubId: string): PersistedEngineState | null {
   try {
     const logPath = toLogPath(clubId);
 
@@ -374,6 +417,40 @@ function loadLatestPersistedState(clubId: string): PersistedEngineState | null {
   }
 
   return null;
+}
+
+async function loadLatestPersistedStateSupabase(clubId: string): Promise<PersistedEngineState | null> {
+  const query = new URLSearchParams();
+  query.set("select", "state");
+  query.set("club_id", `eq.${clubId}`);
+  query.set("order", "at.desc");
+  query.set("limit", "1");
+
+  const rows = await supabaseRequest<Array<Pick<SupabaseSnapshotRow, "state">>>({
+    table: "club_engine_snapshots",
+    query
+  });
+
+  if (!rows[0] || !rows[0].state) {
+    return null;
+  }
+
+  return rows[0].state;
+}
+
+async function loadLatestPersistedState(clubId: string): Promise<PersistedEngineState | null> {
+  if (isSupabaseConfigured()) {
+    try {
+      const fromSupabase = await loadLatestPersistedStateSupabase(clubId);
+      if (fromSupabase) {
+        return fromSupabase;
+      }
+    } catch {
+      // Fallback to local snapshots on transient Supabase failures.
+    }
+  }
+
+  return loadLatestPersistedStateLocal(clubId);
 }
 
 const lastCompactByClub = new Map<string, number>();
@@ -495,6 +572,7 @@ function createInitialState(club: Club): EngineState {
   return {
     clubId: club.id,
     context: deriveClubContext(club),
+    rules: sanitizeRules(club.rules),
     bots: club.bots.map(toEngineBot),
     events: [...club.seedTranscript].slice(-MAX_EVENTS),
     interactions: [],
@@ -542,6 +620,7 @@ function createStateFromPersisted(club: Club, persisted: PersistedEngineState): 
   return {
     clubId: club.id,
     context: persisted.context || deriveClubContext(club),
+    rules: sanitizeRules(persisted.rules || club.rules),
     bots,
     events: Array.isArray(persisted.events) ? persisted.events.slice(-MAX_EVENTS) : [],
     interactions: Array.isArray(persisted.interactions)
@@ -563,6 +642,7 @@ function createStateFromPersisted(club: Club, persisted: PersistedEngineState): 
 
 function syncBotsFromClub(state: EngineState, club: Club) {
   state.context = deriveClubContext(club);
+  state.rules = sanitizeRules(club.rules);
   const previousById = new Map(state.bots.map((bot) => [bot.id, bot]));
   const nextBots: EngineBot[] = [];
 
@@ -591,7 +671,7 @@ function syncBotsFromClub(state: EngineState, club: Club) {
       owner: clubBot.owner,
       status,
       claws: clubBot.claws,
-      activeRatio: clubBot.activeRatio,
+      activeRatio: Math.max(clubBot.activeRatio, existing.activeRatio),
       skin: clubBot.skin,
       hadExchange: clubBot.hadExchange || existing.hadExchange,
       motionState: nextMotion,
@@ -743,7 +823,8 @@ function startSession(state: EngineState, first: EngineBot, second: EngineBot, n
   }
 
   const key = pairKey(first.id, second.id);
-  const turnsPlanned = Math.random() < 0.38 ? 3 : 2;
+  const maxTurns = clamp(Math.round(state.rules.maxPublicTurnsTotal), 2, 6);
+  const turnsPlanned = maxTurns <= 2 ? 2 : 2 + Math.floor(Math.random() * (maxTurns - 1));
   const sessionId = `ix-${makeId()}`;
 
   const session: ActiveSession = {
@@ -806,11 +887,14 @@ function movementTick(state: EngineState) {
       return bot;
     }
 
+    const nextActiveRatio = clamp(bot.activeRatio + 0.004, 0, 1);
+
     const shouldPause = Math.random() < bot.pauseBias * 0.3;
 
     if (shouldPause) {
       return {
         ...bot,
+        activeRatio: nextActiveRatio,
         motionState: "RESTING",
         inertiaTicks: Math.max(0, bot.inertiaTicks - 1)
       };
@@ -846,6 +930,7 @@ function movementTick(state: EngineState) {
 
     return {
       ...bot,
+      activeRatio: nextActiveRatio,
       x: clamp(nextX, 5, 95),
       y: clamp(nextY, 8, 92),
       directionX,
@@ -857,6 +942,9 @@ function movementTick(state: EngineState) {
 }
 
 function encounterTick(state: EngineState, nowMs: number) {
+  const cooldownMs = state.rules.pairCooldownSec * 1000;
+  const radius = state.rules.encounterRadius;
+  const chance = state.rules.encounterChance;
   const activeBots = state.bots.filter((bot) => bot.status === "ACTIVE" && !bot.locked && bot.motionState !== "LOCKED");
 
   for (let i = 0; i < activeBots.length; i += 1) {
@@ -866,15 +954,15 @@ function encounterTick(state: EngineState, nowMs: number) {
       const key = pairKey(first.id, second.id);
       const lastSeen = state.cooldownByPair.get(key) ?? 0;
 
-      if (nowMs - lastSeen < PAIR_COOLDOWN_MS) {
+      if (nowMs - lastSeen < cooldownMs) {
         continue;
       }
 
-      if (distance(first, second) > ENCOUNTER_DISTANCE) {
+      if (distance(first, second) > radius) {
         continue;
       }
 
-      if (Math.random() > 0.68) {
+      if (Math.random() > chance) {
         continue;
       }
 
@@ -906,12 +994,14 @@ function advanceState(state: EngineState, club: Club, nowMs: number) {
   const elapsedMs = nowMs - state.lastAdvancedAtMs;
   state.movementRemainderMs += elapsedMs;
   state.encounterRemainderMs += elapsedMs;
+  const moveTickMs = clamp(Math.round(state.rules.moveTickMs), 250, 2500);
+  const encounterTickMs = encounterCheckMs(state.rules);
 
-  const moveTicks = Math.min(MAX_TICKS_PER_ADVANCE, Math.floor(state.movementRemainderMs / MOVE_TICK_MS));
-  const encounterTicks = Math.min(MAX_TICKS_PER_ADVANCE, Math.floor(state.encounterRemainderMs / ENCOUNTER_CHECK_MS));
+  const moveTicks = Math.min(MAX_TICKS_PER_ADVANCE, Math.floor(state.movementRemainderMs / moveTickMs));
+  const encounterTicks = Math.min(MAX_TICKS_PER_ADVANCE, Math.floor(state.encounterRemainderMs / encounterTickMs));
 
-  state.movementRemainderMs -= moveTicks * MOVE_TICK_MS;
-  state.encounterRemainderMs -= encounterTicks * ENCOUNTER_CHECK_MS;
+  state.movementRemainderMs -= moveTicks * moveTickMs;
+  state.encounterRemainderMs -= encounterTicks * encounterTickMs;
 
   for (let i = 0; i < moveTicks; i += 1) {
     movementTick(state);
@@ -925,69 +1015,112 @@ function advanceState(state: EngineState, club: Club, nowMs: number) {
   state.lastAdvancedAtMs = nowMs;
 }
 
-function persistSnapshot(state: EngineState, nowMs: number) {
+async function persistSnapshot(state: EngineState, nowMs: number) {
+  const event: EngineSnapshotEvent = {
+    id: makeId(),
+    type: "SNAPSHOT",
+    clubId: state.clubId,
+    at: new Date(nowMs).toISOString(),
+    state: serializeState(state)
+  };
+
   try {
     ensureEngineLogDir();
-    const event: EngineSnapshotEvent = {
-      id: makeId(),
-      type: "SNAPSHOT",
-      clubId: state.clubId,
-      at: new Date(nowMs).toISOString(),
-      state: serializeState(state)
-    };
-
     appendFileSync(toLogPath(state.clubId), `${JSON.stringify(event)}\n`, "utf-8");
-    state.lastPersistedAtMs = nowMs;
     maybeCompactLog(state.clubId, nowMs);
   } catch {
-    // Persistence failures should not stop live state generation.
+    // Local persistence failures should not stop live state generation.
   }
+
+  if (isSupabaseConfigured()) {
+    try {
+      await supabaseRequest<SupabaseSnapshotRow[]>({
+        table: "club_engine_snapshots",
+        method: "POST",
+        body: {
+          id: event.id,
+          club_id: event.clubId,
+          at: event.at,
+          state: event.state
+        },
+        prefer: "return=minimal"
+      });
+    } catch {
+      // Ignore Supabase snapshot failures to keep the engine available.
+    }
+  }
+
+  state.lastPersistedAtMs = nowMs;
 }
 
-function maybePersistState(state: EngineState, nowMs: number) {
+async function maybePersistState(state: EngineState, nowMs: number) {
   if (nowMs - state.lastPersistedAtMs < PERSIST_EVERY_MS) {
     return;
   }
 
-  persistSnapshot(state, nowMs);
+  await persistSnapshot(state, nowMs);
 }
 
 type EngineRegistry = Map<string, EngineState>;
+type EngineInitRegistry = Map<string, Promise<void>>;
 
 const globalRegistry = globalThis as typeof globalThis & {
   __clawclubEngineRegistry?: EngineRegistry;
+  __clawclubEngineInitRegistry?: EngineInitRegistry;
 };
 
 const registry: EngineRegistry = globalRegistry.__clawclubEngineRegistry ?? new Map();
+const initRegistry: EngineInitRegistry = globalRegistry.__clawclubEngineInitRegistry ?? new Map();
 
 if (!globalRegistry.__clawclubEngineRegistry) {
   globalRegistry.__clawclubEngineRegistry = registry;
 }
+if (!globalRegistry.__clawclubEngineInitRegistry) {
+  globalRegistry.__clawclubEngineInitRegistry = initRegistry;
+}
 
-function getOrCreateState(club: Club) {
+async function getOrCreateState(club: Club) {
   const existing = registry.get(club.id);
 
   if (existing) {
     return existing;
   }
 
-  const restored = loadLatestPersistedState(club.id);
-  const created = restored ? createStateFromPersisted(club, restored) : createInitialState(club);
-  registry.set(club.id, created);
-  return created;
+  const pending = initRegistry.get(club.id);
+  if (pending) {
+    await pending;
+    return registry.get(club.id) ?? createInitialState(club);
+  }
+
+  const initPromise = (async () => {
+    const restored = await loadLatestPersistedState(club.id);
+    const created = restored ? createStateFromPersisted(club, restored) : createInitialState(club);
+    registry.set(club.id, created);
+  })();
+
+  initRegistry.set(club.id, initPromise);
+
+  try {
+    await initPromise;
+  } finally {
+    initRegistry.delete(club.id);
+  }
+
+  return registry.get(club.id) ?? createInitialState(club);
 }
 
-export function getClubLiveState(club: Club): ClubLiveState {
+export async function getClubLiveState(club: Club): Promise<ClubLiveState> {
   const nowMs = Date.now();
-  const state = getOrCreateState(club);
+  const state = await getOrCreateState(club);
   advanceState(state, club, nowMs);
-  maybePersistState(state, nowMs);
+  await maybePersistState(state, nowMs);
 
   return {
     clubId: state.clubId,
     updatedAt: new Date(nowMs).toISOString(),
     lastEncounter: state.lastEncounter,
     context: state.context,
+    rules: state.rules,
     bots: state.bots.map((bot) => ({
       id: bot.id,
       name: bot.name,

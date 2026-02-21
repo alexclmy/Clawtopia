@@ -8,6 +8,7 @@ import type {
   BotClubTimeline,
   BotProfile,
   Club,
+  ClubRules,
   ClubDirectoryBuckets,
   ClubDirectoryItem,
   ClubStatus
@@ -23,9 +24,63 @@ interface ClubMembershipState {
   memberships: ClubMembership[];
 }
 
+interface ClubStatusOverride {
+  clubId: string;
+  status: ClubStatus;
+}
+
+interface ClubStatusOverrideState {
+  overrides: ClubStatusOverride[];
+}
+
+interface CustomClubState {
+  clubs: Club[];
+}
+
+export interface CreateClubInput {
+  name: string;
+  theme: string;
+  status: ClubStatus;
+  alternanceMode: Club["alternanceMode"];
+  requiredClaws: number;
+  durationHours: number;
+  maxBots: number;
+  startedAt: string;
+  rules: ClubRules;
+}
+
 const DATA_DIR = path.join(process.cwd(), "data");
 const CLUB_MEMBERSHIP_PATH = path.join(DATA_DIR, "club-memberships.json");
+const CLUB_STATUS_OVERRIDE_PATH = path.join(DATA_DIR, "club-status-overrides.json");
+const CUSTOM_CLUBS_PATH = path.join(DATA_DIR, "custom-clubs.json");
 const SUPABASE_MEMBERSHIP_FIELDS = "club_id,bot_id,joined_at";
+
+const RULESETS: Record<"FOCUSED_DEBATE" | "FAST_SOCIAL" | "RESEARCH", ClubRules> = {
+  FOCUSED_DEBATE: {
+    maxPublicTurnsTotal: 3,
+    maxMessageChars: 480,
+    pairCooldownSec: 120,
+    moveTickMs: 700,
+    encounterRadius: 10.5,
+    encounterChance: 0.68
+  },
+  FAST_SOCIAL: {
+    maxPublicTurnsTotal: 3,
+    maxMessageChars: 360,
+    pairCooldownSec: 90,
+    moveTickMs: 650,
+    encounterRadius: 11,
+    encounterChance: 0.72
+  },
+  RESEARCH: {
+    maxPublicTurnsTotal: 4,
+    maxMessageChars: 520,
+    pairCooldownSec: 140,
+    moveTickMs: 760,
+    encounterRadius: 10,
+    encounterChance: 0.64
+  }
+};
 
 const clubs: Club[] = [
   {
@@ -38,6 +93,7 @@ const clubs: Club[] = [
     durationHours: 6,
     maxBots: 16,
     startedAt: "2026-02-17T13:00:00.000Z",
+    rules: RULESETS.FOCUSED_DEBATE,
     bots: [
       {
         id: "nova",
@@ -174,6 +230,7 @@ const clubs: Club[] = [
     durationHours: 6,
     maxBots: 16,
     startedAt: "2026-02-20T17:00:00.000Z",
+    rules: RULESETS.RESEARCH,
     bots: [],
     seedTranscript: []
   },
@@ -187,6 +244,7 @@ const clubs: Club[] = [
     durationHours: 6,
     maxBots: 16,
     startedAt: "2026-02-10T11:00:00.000Z",
+    rules: RULESETS.FAST_SOCIAL,
     bots: [
       {
         id: "atlas",
@@ -217,6 +275,7 @@ const clubs: Club[] = [
     durationHours: 6,
     maxBots: 16,
     startedAt: "2026-02-24T09:00:00.000Z",
+    rules: RULESETS.RESEARCH,
     bots: [],
     seedTranscript: []
   }
@@ -226,6 +285,14 @@ let writeChain: Promise<void> = Promise.resolve();
 
 function defaultMembershipState(): ClubMembershipState {
   return { memberships: [] };
+}
+
+function defaultClubStatusOverrideState(): ClubStatusOverrideState {
+  return { overrides: [] };
+}
+
+function defaultCustomClubState(): CustomClubState {
+  return { clubs: [] };
 }
 
 async function ensureClubMembershipFile() {
@@ -264,6 +331,50 @@ async function writeMembershipState(state: ClubMembershipState) {
   await fs.writeFile(CLUB_MEMBERSHIP_PATH, JSON.stringify(state, null, 2), "utf-8");
 }
 
+async function readClubStatusOverrideState() {
+  const content = await fs.readFile(CLUB_STATUS_OVERRIDE_PATH, "utf-8").catch(() => null);
+
+  if (!content) {
+    return defaultClubStatusOverrideState();
+  }
+
+  try {
+    const parsed = JSON.parse(content) as ClubStatusOverrideState;
+    return {
+      overrides: parsed.overrides || []
+    };
+  } catch {
+    return defaultClubStatusOverrideState();
+  }
+}
+
+async function writeClubStatusOverrideState(state: ClubStatusOverrideState) {
+  await fs.mkdir(DATA_DIR, { recursive: true });
+  await fs.writeFile(CLUB_STATUS_OVERRIDE_PATH, JSON.stringify(state, null, 2), "utf-8");
+}
+
+async function readCustomClubState() {
+  const content = await fs.readFile(CUSTOM_CLUBS_PATH, "utf-8").catch(() => null);
+
+  if (!content) {
+    return defaultCustomClubState();
+  }
+
+  try {
+    const parsed = JSON.parse(content) as CustomClubState;
+    return {
+      clubs: parsed.clubs || []
+    };
+  } catch {
+    return defaultCustomClubState();
+  }
+}
+
+async function writeCustomClubState(state: CustomClubState) {
+  await fs.mkdir(DATA_DIR, { recursive: true });
+  await fs.writeFile(CUSTOM_CLUBS_PATH, JSON.stringify(state, null, 2), "utf-8");
+}
+
 function serializeWrite<T>(operation: () => Promise<T>) {
   const result = writeChain.then(operation, operation);
   writeChain = result.then(
@@ -271,6 +382,39 @@ function serializeWrite<T>(operation: () => Promise<T>) {
     () => undefined
   );
   return result;
+}
+
+function clampNumber(value: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function slugify(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 28);
+}
+
+function sanitizeRules(rules: ClubRules): ClubRules {
+  return {
+    maxPublicTurnsTotal: clampNumber(Math.round(rules.maxPublicTurnsTotal || 3), 2, 6),
+    maxMessageChars: clampNumber(Math.round(rules.maxMessageChars || 480), 120, 900),
+    pairCooldownSec: clampNumber(Math.round(rules.pairCooldownSec || 120), 10, 600),
+    moveTickMs: clampNumber(Math.round(rules.moveTickMs || 700), 250, 2500),
+    encounterRadius: clampNumber(Number(rules.encounterRadius || 10.5), 4, 18),
+    encounterChance: clampNumber(Number(rules.encounterChance || 0.68), 0.08, 0.95)
+  };
+}
+
+function sanitizeStartedAt(value: string) {
+  const parsed = new Date(value);
+
+  if (Number.isNaN(parsed.getTime())) {
+    return new Date().toISOString();
+  }
+
+  return parsed.toISOString();
 }
 
 interface SupabaseMembershipRow {
@@ -313,6 +457,18 @@ async function insertMembershipSupabase(entry: ClubMembership) {
       joined_at: entry.joinedAt
     },
     prefer: "return=representation"
+  });
+}
+
+async function deleteMembershipSupabase(clubId: string, botId: string) {
+  const query = new URLSearchParams();
+  query.set("club_id", `eq.${clubId}`);
+  query.set("bot_id", `eq.${botId}`);
+
+  await supabaseRequest<null>({
+    table: "club_memberships",
+    method: "DELETE",
+    query
   });
 }
 
@@ -375,7 +531,8 @@ function toDirectoryItem(club: Club): ClubDirectoryItem {
     maxBots: club.maxBots,
     activeBots,
     pausedBots,
-    startedAt: club.startedAt
+    startedAt: club.startedAt,
+    rules: club.rules
   };
 }
 
@@ -418,11 +575,27 @@ function mergeClubWithRuntimeBots(club: Club, runtimeBots: BotProfile[]) {
 }
 
 async function getAllClubsWithRuntime() {
-  const runtimeByClubId = await getRuntimeBotsByClubId();
+  const [runtimeByClubId, statusOverrideState, customClubState] = await Promise.all([
+    getRuntimeBotsByClubId(),
+    readClubStatusOverrideState(),
+    readCustomClubState()
+  ]);
+  const overrideByClubId = new Map(statusOverrideState.overrides.map((entry) => [entry.clubId, entry.status]));
+  const allClubs = [...clubs, ...customClubState.clubs];
 
-  return clubs.map((club) => {
+  return allClubs.map((club) => {
     const runtimeBots = runtimeByClubId.get(club.id) || [];
-    return mergeClubWithRuntimeBots(club, runtimeBots);
+    const merged = mergeClubWithRuntimeBots(club, runtimeBots);
+    const overrideStatus = overrideByClubId.get(club.id);
+
+    if (!overrideStatus) {
+      return merged;
+    }
+
+    return {
+      ...merged,
+      status: overrideStatus
+    };
   });
 }
 
@@ -478,7 +651,8 @@ export async function getBotClubTimeline(botId: string): Promise<BotClubTimeline
 
 export async function joinClub(clubId: string, bot: BotRegistration) {
   return serializeWrite(async () => {
-    const club = clubs.find((entry) => entry.id === clubId);
+    const clubsWithRuntime = await getAllClubsWithRuntime();
+    const club = clubsWithRuntime.find((entry) => entry.id === clubId);
 
     if (!club) {
       return {
@@ -487,7 +661,7 @@ export async function joinClub(clubId: string, bot: BotRegistration) {
       };
     }
 
-    if (club.status === "ENDED") {
+    if (club.status === "ENDED" || club.status === "ENDING") {
       return {
         ok: false as const,
         reason: "CLUB_ENDED"
@@ -510,9 +684,7 @@ export async function joinClub(clubId: string, bot: BotRegistration) {
       };
     }
 
-    const clubsWithRuntime = await getAllClubsWithRuntime();
-    const fullClub = clubsWithRuntime.find((entry) => entry.id === clubId);
-    const population = fullClub ? fullClub.bots.length : club.bots.length;
+    const population = club.bots.length;
 
     if (population >= club.maxBots) {
       return {
@@ -550,5 +722,109 @@ export async function joinClub(clubId: string, bot: BotRegistration) {
       ok: true as const,
       alreadyMember: false as const
     };
+  });
+}
+
+export async function leaveClub(clubId: string, botId: string) {
+  return serializeWrite(async () => {
+    const clubsWithRuntime = await getAllClubsWithRuntime();
+    const club = clubsWithRuntime.find((entry) => entry.id === clubId);
+
+    if (!club) {
+      return {
+        ok: false as const,
+        reason: "CLUB_NOT_FOUND"
+      };
+    }
+
+    if (isSupabaseConfigured()) {
+      await deleteMembershipSupabase(clubId, botId);
+      return {
+        ok: true as const
+      };
+    }
+
+    const state = await readMembershipState();
+    const before = state.memberships.length;
+    state.memberships = state.memberships.filter(
+      (entry) => !(entry.clubId === clubId && entry.botId === botId)
+    );
+
+    if (state.memberships.length !== before) {
+      await writeMembershipState(state);
+    }
+
+    return {
+      ok: true as const
+    };
+  });
+}
+
+export async function setClubStatus(clubId: string, status: ClubStatus) {
+  return serializeWrite(async () => {
+    const clubsWithRuntime = await getAllClubsWithRuntime();
+    const exists = clubsWithRuntime.some((club) => club.id === clubId);
+
+    if (!exists) {
+      return {
+        ok: false as const,
+        reason: "CLUB_NOT_FOUND"
+      };
+    }
+
+    const state = await readClubStatusOverrideState();
+    const index = state.overrides.findIndex((entry) => entry.clubId === clubId);
+
+    if (index >= 0) {
+      state.overrides[index] = { clubId, status };
+    } else {
+      state.overrides.push({ clubId, status });
+    }
+
+    await writeClubStatusOverrideState(state);
+
+    return {
+      ok: true as const
+    };
+  });
+}
+
+export async function listAllClubsForAdmin() {
+  const allClubs = await getAllClubsWithRuntime();
+  return sortByStartDateDescending(allClubs.map(toDirectoryItem));
+}
+
+export async function createClub(input: CreateClubInput) {
+  return serializeWrite(async () => {
+    const state = await readCustomClubState();
+    const allClubs = await getAllClubsWithRuntime();
+    const existingIds = new Set(allClubs.map((club) => club.id));
+
+    const baseSlug = slugify(input.name) || "club";
+    let id = `club-${baseSlug}`;
+
+    if (existingIds.has(id)) {
+      id = `${id}-${Date.now().toString(36).slice(-4)}`;
+    }
+
+    const club: Club = {
+      id,
+      name: input.name.trim(),
+      theme: input.theme.trim(),
+      status: input.status,
+      alternanceMode: input.alternanceMode,
+      requiredClaws: clampNumber(Math.round(input.requiredClaws || 0), 0, 999),
+      durationHours: clampNumber(Math.round(input.durationHours || 6), 1, 72),
+      maxBots: clampNumber(Math.round(input.maxBots || 16), 2, 16),
+      startedAt: sanitizeStartedAt(input.startedAt),
+      rules: sanitizeRules(input.rules),
+      bots: [],
+      seedTranscript: []
+    };
+
+    state.clubs.push(club);
+    await writeCustomClubState(state);
+
+    return club;
   });
 }

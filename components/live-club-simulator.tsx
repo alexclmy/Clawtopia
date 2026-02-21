@@ -2,6 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import ClubWorldPhaser from "@/components/club-world-phaser";
+import { Alert } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger
+} from "@/components/ui/accordion";
 import { formatTimeOrDash } from "@/lib/date-time";
 import type {
   BotStatus,
@@ -41,9 +49,10 @@ function motionLabel(bot: LiveBotState, partnerName?: string) {
 
 interface LiveClubSimulatorProps {
   club: Club;
+  canViewBotMemory: boolean;
 }
 
-export default function LiveClubSimulator({ club }: LiveClubSimulatorProps) {
+export default function LiveClubSimulator({ club, canViewBotMemory }: LiveClubSimulatorProps) {
   const [state, setState] = useState<ClubLiveState | null>(null);
   const [selectedBotId, setSelectedBotId] = useState<string>(() => club.bots[0]?.id ?? "");
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -110,10 +119,21 @@ export default function LiveClubSimulator({ club }: LiveClubSimulatorProps) {
     );
   }, [interactions, selectedBotId]);
 
+  const timelineOverview = useMemo(() => {
+    return [...interactions].reverse();
+  }, [interactions]);
+
+  const recentEvents = useMemo(() => {
+    return [...events].slice(-14).reverse();
+  }, [events]);
+
   const lockedPairs = useMemo(() => {
     const locked = bots.filter((bot) => bot.locked).length;
     return Math.floor(locked / 2);
   }, [bots]);
+
+  const activeCount = useMemo(() => bots.filter((bot) => bot.status === "ACTIVE").length, [bots]);
+  const pausedCount = useMemo(() => bots.filter((bot) => bot.status === "PAUSED").length, [bots]);
 
   useEffect(() => {
     if (!bots.length) {
@@ -142,66 +162,122 @@ export default function LiveClubSimulator({ club }: LiveClubSimulatorProps) {
   return (
     <div className="live-layout">
       <section className="live-stage-card">
-        <div className="live-meta">
-          <span className="live-chip">alternance: {club.alternanceMode}</span>
-          <span className="live-chip">required claws: {club.requiredClaws}</span>
-          <span className="live-chip">context: {clubContext?.modeLabel ?? "Loading..."}</span>
-          <span className="live-chip">locked pairs: {lockedPairs}</span>
-          <span className="live-chip">last encounter: {state?.lastEncounter ?? "No encounter yet"}</span>
-        </div>
-
-        <div className="club-context">
-          <h3>Club context</h3>
-          <p>{clubContext?.briefing ?? "Preparing context..."}</p>
-          <p>
-            <strong>Objective:</strong> {clubContext?.objective ?? club.theme}
-          </p>
+        <div className="club-live-head">
+          <div>
+            <h2>Club Live</h2>
+            <p>{clubContext?.objective ?? club.theme}</p>
+          </div>
+          <div className="live-meta">
+            <Badge className="live-chip" variant="outline">{activeCount} active</Badge>
+            <Badge className="live-chip" variant="outline">{pausedCount} paused</Badge>
+            <Badge className="live-chip" variant="outline">{lockedPairs} pair(s) in discussion</Badge>
+            <Badge className="live-chip" variant="outline">mode: {clubContext?.modeLabel ?? "Loading..."}</Badge>
+            <Badge className="live-chip" variant="outline">last encounter: {state?.lastEncounter ?? "No encounter yet"}</Badge>
+          </div>
         </div>
 
         <div className="world-stage">
           <ClubWorldPhaser bots={bots} selectedBotId={selectedBotId} onSelectBot={setSelectedBotId} />
         </div>
 
-        <div className="legend">
-          <span>ACTIVE: organic movement with inertia and bursts</span>
-          <span>LOCKED: bots stop and complete 2-3 exchanges</span>
-          <span>PAUSED/OFFLINE: visible but inactive</span>
-        </div>
+        {fetchError ? <Alert variant="error">{fetchError}</Alert> : null}
 
-        {fetchError ? <p className="form-error">{fetchError}</p> : null}
+        <section className="live-timeline-panel">
+          <div className="list-head">
+            <h3>Live Timeline</h3>
+            <p>{interactions.length} encounters</p>
+          </div>
 
-        <div className="event-feed">
-          <h3>Club-wide chat log (chronological)</h3>
-          <ul className="event-list">
-            {events.map((event, index) => {
-              const fromName = botMap.get(event.fromBotId)?.name ?? event.fromBotId;
-              const toName = botMap.get(event.toBotId)?.name ?? event.toBotId;
+          <Accordion>
+            <AccordionItem className="timeline-disclosure" defaultOpen>
+              <AccordionTrigger>Quick overview</AccordionTrigger>
+              <AccordionContent>
+                {timelineOverview.length ? (
+                  <ol className="interaction-list">
+                    {timelineOverview.map((interaction) => (
+                      <li key={interaction.id} className="interaction-card">
+                        <div className="interaction-head">
+                          <strong>
+                            {interaction.participants[0].name} x {interaction.participants[1].name}
+                          </strong>
+                          <span>{formatTimeOrDash(interaction.startedAt)}</span>
+                        </div>
+                        <p className="interaction-meta">
+                          {interaction.contextMode} | {interaction.transcript.length}/{interaction.turnsPlanned} turns
+                        </p>
+                      </li>
+                    ))}
+                  </ol>
+                ) : (
+                  <p className="muted-line">No interactions to display yet.</p>
+                )}
+              </AccordionContent>
+            </AccordionItem>
 
-              return (
-                <li key={event.id} className="event-item">
-                  <p className="event-meta">
-                    #{index + 1} [{event.at}] {fromName} {"->"} {toName}
-                  </p>
-                  <p>{event.text}</p>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
+            <AccordionItem className="timeline-disclosure">
+              <AccordionTrigger>Deep dive interactions</AccordionTrigger>
+              <AccordionContent>
+                {timelineOverview.length ? (
+                  <ol className="interaction-list">
+                    {timelineOverview.map((interaction) => (
+                      <li key={interaction.id} className="interaction-card">
+                        <InteractionContent interaction={interaction} botMap={botMap} />
+                      </li>
+                    ))}
+                  </ol>
+                ) : (
+                  <p className="muted-line">Detailed view appears after first encounters.</p>
+                )}
+              </AccordionContent>
+            </AccordionItem>
 
-        <div className="event-feed">
-          <h3>Club interaction timeline (chronological)</h3>
-          <ol className="interaction-list">
-            {interactions.map((interaction) => (
-              <li key={interaction.id} className="interaction-card">
-                <InteractionContent interaction={interaction} botMap={botMap} />
-              </li>
-            ))}
-          </ol>
-        </div>
+            <AccordionItem className="timeline-disclosure">
+              <AccordionTrigger>Club messages</AccordionTrigger>
+              <AccordionContent>
+                {recentEvents.length ? (
+                  <ul className="event-list">
+                    {recentEvents.map((event, index) => {
+                      const fromName = botMap.get(event.fromBotId)?.name ?? event.fromBotId;
+                      const toName = botMap.get(event.toBotId)?.name ?? event.toBotId;
+
+                      return (
+                        <li key={event.id} className="event-item">
+                          <p className="event-meta">
+                            #{recentEvents.length - index} [{event.at}] {fromName} {"->"} {toName}
+                          </p>
+                          <p>{event.text}</p>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : (
+                  <p className="muted-line">No messages yet.</p>
+                )}
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </section>
       </section>
 
       <aside className="bot-panel">
+        <div className="bot-panel-head">
+          <h3>Bots</h3>
+          <p>{bots.length} connected</p>
+        </div>
+        <div className="bot-tab-list">
+          {bots.map((bot) => (
+            <button
+              key={bot.id}
+              type="button"
+              className={`bot-tab ${selectedBotId === bot.id ? "is-active" : ""}`}
+              onClick={() => setSelectedBotId(bot.id)}
+            >
+              <span className={`bot-tab-dot bot-tab-dot--${bot.status.toLowerCase()}`} />
+              {bot.name}
+            </button>
+          ))}
+        </div>
+
         {selectedBot ? (
           <>
             <div className="bot-panel-top">
@@ -211,10 +287,7 @@ export default function LiveClubSimulator({ club }: LiveClubSimulatorProps) {
               </span>
             </div>
 
-            <p>
-              Owner: {selectedBot.owner} | claws: {selectedBot.claws} | active ratio:{" "}
-              {Math.round(selectedBot.activeRatio * 100)}%
-            </p>
+            <p>Owner: {selectedBot.owner}</p>
             <p>
               Persona: {selectedBot.persona} | state:{" "}
               {motionLabel(
@@ -222,42 +295,69 @@ export default function LiveClubSimulator({ club }: LiveClubSimulatorProps) {
                 selectedBot.lockedWith ? botMap.get(selectedBot.lockedWith)?.name : undefined
               )}
             </p>
+            <p>
+              Claws: {selectedBot.claws} | active ratio: {Math.round(selectedBot.activeRatio * 100)}%
+            </p>
 
-            <h4>Global synthesis</h4>
-            <ul className="memory-list">
-              {selectedBot.memory.globalSynthesis.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
+            {canViewBotMemory ? (
+              <Accordion>
+                <AccordionItem className="bot-detail" defaultOpen>
+                  <AccordionTrigger>Global synthesis</AccordionTrigger>
+                  <AccordionContent>
+                    <ul className="memory-list">
+                      {selectedBot.memory.globalSynthesis.map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ul>
+                  </AccordionContent>
+                </AccordionItem>
 
-            <h4>Pair memory</h4>
-            <ul className="pair-list">
-              {Object.entries(selectedBot.memory.pairMemory).map(([botId, note]) => (
-                <li key={botId}>
-                  <strong>{botMap.get(botId)?.name ?? botId}:</strong> {note}
-                </li>
-              ))}
-            </ul>
+                <AccordionItem className="bot-detail">
+                  <AccordionTrigger>Pair memory</AccordionTrigger>
+                  <AccordionContent>
+                    <ul className="pair-list">
+                      {Object.entries(selectedBot.memory.pairMemory).map(([botId, note]) => (
+                        <li key={botId}>
+                          <strong>{botMap.get(botId)?.name ?? botId}:</strong> {note}
+                        </li>
+                      ))}
+                    </ul>
+                  </AccordionContent>
+                </AccordionItem>
 
-            <h4>Interaction timeline for this bot</h4>
-            {selectedBotInteractions.length === 0 ? (
-              <p className="muted-line">No interaction yet for this bot.</p>
+                <AccordionItem className="bot-detail">
+                  <AccordionTrigger>Timeline for this bot</AccordionTrigger>
+                  <AccordionContent>
+                    {selectedBotInteractions.length === 0 ? (
+                      <p className="muted-line">No interaction yet for this bot.</p>
+                    ) : (
+                      <ol className="interaction-list">
+                        {selectedBotInteractions.map((interaction) => (
+                          <li key={interaction.id} className="interaction-card">
+                            <InteractionContent interaction={interaction} botMap={botMap} selectedBotId={selectedBot.id} />
+                          </li>
+                        ))}
+                      </ol>
+                    )}
+                  </AccordionContent>
+                </AccordionItem>
+
+                <AccordionItem className="bot-detail">
+                  <AccordionTrigger>Recent history</AccordionTrigger>
+                  <AccordionContent>
+                    <ul className="history-list">
+                      {selectedBot.history.map((line) => (
+                        <li key={line}>{line}</li>
+                      ))}
+                    </ul>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
             ) : (
-              <ol className="interaction-list">
-                {selectedBotInteractions.map((interaction) => (
-                  <li key={interaction.id} className="interaction-card">
-                    <InteractionContent interaction={interaction} botMap={botMap} selectedBotId={selectedBot.id} />
-                  </li>
-                ))}
-              </ol>
+              <Alert className="bot-memory-lock" variant="warning">
+                Sign in to unlock bot memory, pair context, and detailed bot timeline.
+              </Alert>
             )}
-
-            <h4>Recent history</h4>
-            <ul className="history-list">
-              {selectedBot.history.map((line) => (
-                <li key={line}>{line}</li>
-              ))}
-            </ul>
           </>
         ) : (
           <p className="bot-panel-empty">Click a bot to inspect memory and interaction history.</p>

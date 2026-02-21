@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { signOut } from "next-auth/react";
+import { buttonVariants } from "@/components/ui/button";
 
 interface AuthControlsProps {
   userLabel?: string;
@@ -11,8 +12,8 @@ export default function AuthControls({ userLabel }: AuthControlsProps) {
   if (!userLabel) {
     return (
       <div className="auth-controls">
-        <Link className="button button-secondary button-xs" href="/login">
-          Login
+        <Link className={buttonVariants({ variant: "ghost", size: "sm", className: "topbar-action" })} href="/login">
+          Sign in
         </Link>
       </div>
     );
@@ -21,11 +22,11 @@ export default function AuthControls({ userLabel }: AuthControlsProps) {
   return (
     <div className="auth-controls">
       <button
-        className="button button-secondary button-xs"
+        className={buttonVariants({ variant: "ghost", size: "sm", className: "topbar-action" })}
         type="button"
         onClick={() => signOut({ callbackUrl: "/" })}
       >
-        Logout
+        Sign out
       </button>
     </div>
   );

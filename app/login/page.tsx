@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import LoginForm from "@/components/login-form";
-import { authOptions, isGoogleAuthConfigured } from "@/lib/auth";
+import { authOptions, isDemoAuthEnabled, isGoogleAuthConfigured } from "@/lib/auth";
 
 interface LoginPageProps {
   searchParams?: Record<string, string | string[] | undefined>;
@@ -19,7 +19,11 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 
   return (
     <section>
-      <LoginForm googleEnabled={isGoogleAuthConfigured} callbackUrl={callbackUrl} />
+      <LoginForm
+        googleEnabled={isGoogleAuthConfigured}
+        demoEnabled={isDemoAuthEnabled}
+        callbackUrl={callbackUrl}
+      />
     </section>
   );
 }

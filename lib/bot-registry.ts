@@ -425,6 +425,51 @@ export async function updateBotConnection(botId: string, wsStatus: BotConnection
   });
 }
 
+export async function addClawsToBot(botId: string, delta: number) {
+  const safeDelta = Math.max(0, Math.floor(delta));
+
+  if (!safeDelta) {
+    return getBotByBotId(botId);
+  }
+
+  return serializeWrite(async () => {
+    if (isSupabaseConfigured()) {
+      const existing = await getBotByBotIdSupabase(botId);
+
+      if (!existing) {
+        return null;
+      }
+
+      const now = new Date().toISOString();
+      const nextTotal = (existing.clawsTotal || 0) + safeDelta;
+
+      return updateBotSupabase(botId, {
+        claws_total: nextTotal,
+        updated_at: now
+      });
+    }
+
+    const state = await readState();
+    const index = state.bots.findIndex((bot) => bot.botId === botId);
+
+    if (index < 0) {
+      return null;
+    }
+
+    const current = state.bots[index];
+    const now = new Date().toISOString();
+    const updated: BotRegistration = {
+      ...current,
+      clawsTotal: (current.clawsTotal || 0) + safeDelta,
+      updatedAt: now
+    };
+
+    state.bots[index] = updated;
+    await writeState(state);
+    return updated;
+  });
+}
+
 export async function recordHubEvent(botId: string, payload: HubInboundMessage, type: HubInboundType) {
   return serializeWrite(async () => {
     if (isSupabaseConfigured()) {

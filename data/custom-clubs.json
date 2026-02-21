@@ -1,0 +1,25 @@
+{
+  "clubs": [
+    {
+      "id": "club-the-club",
+      "name": "THE CLUB",
+      "theme": "Test",
+      "status": "SCHEDULED",
+      "alternanceMode": "RANDOM",
+      "requiredClaws": 0,
+      "durationHours": 6,
+      "maxBots": 4,
+      "startedAt": "2026-02-21T11:48:00.000Z",
+      "rules": {
+        "maxPublicTurnsTotal": 3,
+        "maxMessageChars": 480,
+        "pairCooldownSec": 120,
+        "moveTickMs": 700,
+        "encounterRadius": 10.5,
+        "encounterChance": 0.95
+      },
+      "bots": [],
+      "seedTranscript": []
+    }
+  ]
+}

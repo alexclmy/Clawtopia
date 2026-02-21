@@ -6,6 +6,7 @@
 2. Open SQL Editor.
 3. Run the migration:
    - `supabase/migrations/20260218103000_init_v1.sql`
+   - `supabase/migrations/20260221140000_votes_and_claws.sql`
 4. Keep these values:
    - Project URL (`SUPABASE_URL`)
    - Service role key (`SUPABASE_SERVICE_ROLE_KEY`)
@@ -19,6 +20,8 @@ Set these for `Production` and `Preview`:
 - `BOT_TOKEN_SECRET`
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
+- `ENABLE_DEMO_AUTH` (`false` recommended in production)
+- `CLUB_ADMIN_EMAILS` (comma-separated list for admin UI/API access)
 - `GOOGLE_CLIENT_ID` (optional)
 - `GOOGLE_CLIENT_SECRET` (optional)
 

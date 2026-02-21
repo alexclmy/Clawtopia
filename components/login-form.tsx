@@ -2,13 +2,21 @@
 
 import { useState, type FormEvent } from "react";
 import { signIn } from "next-auth/react";
+import { Alert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { Spinner } from "@/components/ui/spinner";
 
 interface LoginFormProps {
   googleEnabled: boolean;
+  demoEnabled: boolean;
   callbackUrl: string;
 }
 
-export default function LoginForm({ googleEnabled, callbackUrl }: LoginFormProps) {
+export default function LoginForm({ googleEnabled, demoEnabled, callbackUrl }: LoginFormProps) {
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -48,58 +56,76 @@ export default function LoginForm({ googleEnabled, callbackUrl }: LoginFormProps
   }
 
   return (
-    <div className="auth-card">
-      <h1 className="section-heading">Sign In to ClawClub</h1>
-      <p className="section-copy">Google OAuth is available if configured. Otherwise use demo mode.</p>
+    <Card className="auth-card">
+      <CardHeader>
+        <CardTitle className="section-heading">Sign In to ClawClub</CardTitle>
+        <p className="section-copy">Google OAuth is available if configured. Otherwise use demo mode.</p>
+      </CardHeader>
+      <CardContent>
+        {googleEnabled ? (
+          <Button type="button" variant="default" onClick={() => signIn("google", { callbackUrl })}>
+            Continue with Google
+          </Button>
+        ) : (
+          <Alert variant="warning">
+            Google OAuth is not configured. Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
+          </Alert>
+        )}
 
-      {googleEnabled ? (
-        <button
-          type="button"
-          className="button button-primary"
-          onClick={() => signIn("google", { callbackUrl })}
-        >
-          Continue with Google
-        </button>
-      ) : (
-        <p className="auth-note">Google OAuth is not configured. Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.</p>
-      )}
+        {googleEnabled && demoEnabled ? (
+          <>
+            <Separator />
+            <div className="auth-divider">or</div>
+          </>
+        ) : null}
 
-      <div className="auth-divider">or</div>
+        {demoEnabled ? (
+          <form className="auth-form" onSubmit={handleDemoSignIn}>
+            <Label htmlFor="name">Name</Label>
+            <Input id="name" value={name} onChange={(event) => setName(event.target.value)} placeholder="Alex" />
 
-      <form className="auth-form" onSubmit={handleDemoSignIn}>
-        <label htmlFor="name">Name</label>
-        <input id="name" value={name} onChange={(event) => setName(event.target.value)} placeholder="Alex" />
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="alex@example.com"
+              required
+            />
 
-        <label htmlFor="email">Email</label>
-        <input
-          id="email"
-          type="email"
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-          placeholder="alex@example.com"
-          required
-        />
+            <Button variant="secondary" disabled={submitting} type="submit">
+              {submitting ? (
+                <>
+                  <Spinner /> Signing in...
+                </>
+              ) : (
+                "Enter Demo Mode"
+              )}
+            </Button>
+          </form>
+        ) : (
+          <Alert variant="warning">Demo auth is disabled. Configure Google OAuth or set `ENABLE_DEMO_AUTH=true`.</Alert>
+        )}
 
-        <button className="button button-secondary" disabled={submitting} type="submit">
-          {submitting ? "Signing in..." : "Enter Demo Mode"}
-        </button>
-      </form>
+        {error ? <Alert variant="error">{error}</Alert> : null}
 
-      {error ? <p className="auth-error">{error}</p> : null}
-
-      <div className="auth-reset">
-        <p className="auth-note">
-          If you see `JWEDecryptionFailed`, click below to reset your local session.
-        </p>
-        <button
-          type="button"
-          className="button button-secondary"
-          onClick={resetSessionCookies}
-          disabled={resetting}
-        >
-          {resetting ? "Resetting..." : "Reset Local Session"}
-        </button>
-      </div>
-    </div>
+        <Separator />
+        <div className="auth-reset">
+          <Alert variant="default">
+            If you see `JWEDecryptionFailed`, reset your local session to continue.
+          </Alert>
+          <Button type="button" variant="secondary" onClick={resetSessionCookies} disabled={resetting}>
+            {resetting ? (
+              <>
+                <Spinner /> Resetting...
+              </>
+            ) : (
+              "Reset Local Session"
+            )}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

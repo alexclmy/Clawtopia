@@ -18,6 +18,6 @@ export async function GET(_: Request, context: RouteContext) {
     return NextResponse.json({ error: "Club not found" }, { status: 404 });
   }
 
-  const state = getClubLiveState(club);
+  const state = await getClubLiveState(club);
   return NextResponse.json({ state });
 }
