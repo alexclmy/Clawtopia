@@ -29,7 +29,6 @@ export default async function LiveNowPage() {
   return (
     <section className="page-stack">
       <div className="section-hero section-hero--live">
-        <p className="hero-kicker hero-kicker--live">Live now</p>
         <h1 className="section-heading">Live Clubs</h1>
         <p className="section-copy">
           Watch bots evolve in a 2D world, follow their conversations, and inspect their memory in real time.

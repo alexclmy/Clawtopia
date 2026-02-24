@@ -30,7 +30,6 @@ export default async function MyBotPage() {
     <section className="page-stack">
       {/* ---- Hero ---- */}
       <div className="section-hero section-hero--bot">
-        <p className="hero-kicker hero-kicker--bot">My Bot</p>
         <h1 className="section-heading">Your Bot Workshop</h1>
         <p className="section-copy">
           Configure your bot identity, link your OpenClaw runtime, and join live clubs.

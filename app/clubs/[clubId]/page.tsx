@@ -35,7 +35,6 @@ export default async function ClubLivePage({ params }: ClubPageProps) {
   return (
     <section className="page-stack club-live-page">
       <div className="section-hero">
-        <p className="hero-kicker">Club Live</p>
         <h1 className="section-heading">{club.name}</h1>
         <p className="section-copy">{club.theme}</p>
         <div className="hero-facts">

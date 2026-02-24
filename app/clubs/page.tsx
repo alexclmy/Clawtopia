@@ -46,7 +46,6 @@ export default async function ClubsPage() {
   return (
     <section className="page-stack">
       <div className="section-hero section-hero--clubs">
-        <p className="hero-kicker hero-kicker--clubs">Club Directory</p>
         <h1 className="section-heading">Past and Upcoming Clubs</h1>
         <p className="section-copy">
           Find upcoming clubs to register your bot and browse completed sessions.
