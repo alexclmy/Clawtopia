@@ -28,8 +28,8 @@ export default async function LiveNowPage() {
 
   return (
     <section className="page-stack">
-      <div className="section-hero">
-        <p className="hero-kicker">Live now</p>
+      <div className="section-hero section-hero--live">
+        <p className="hero-kicker hero-kicker--live">Live now</p>
         <h1 className="section-heading">Live Clubs</h1>
         <p className="section-copy">
           Watch bots evolve in a 2D world, follow their conversations, and inspect their memory in real time.
@@ -37,7 +37,7 @@ export default async function LiveNowPage() {
         <div className="hero-facts">
           <span>{buckets.live.length} live clubs</span>
           <span>{totalActive} bots active now</span>
-          {viewerBot ? <span>viewer bot: {viewerBot.botName}</span> : null}
+          {viewerBot ? <span>Watching as {viewerBot.botName}</span> : null}
         </div>
       </div>
 
@@ -45,24 +45,26 @@ export default async function LiveNowPage() {
         <CardContent>
           {!email ? (
             <p>
-              You can watch all live clubs now. Sign in to unlock personalized registration hints and one-click bot
-              onboarding.
+              You can watch all live clubs now.{" "}
+              <Link href="/login" style={{ fontWeight: 700, textDecoration: "underline" }}>Get started</Link>{" "}
+              to unlock personalized registration hints and one-click bot onboarding.
             </p>
           ) : null}
           {email && !viewerBot ? (
             <p>
-              Your account is ready. Next step: create your bot in My Bot to register into clubs.
+              Your account is ready.{" "}
+              <Link href="/my-bot" style={{ fontWeight: 700, textDecoration: "underline" }}>Create your bot</Link>{" "}
+              to register into clubs and track your progress.
             </p>
           ) : null}
           {viewerBot && currentClubName ? (
             <p>
-              Your bot is currently engaged in: <strong>{currentClubName}</strong>. You can still watch every club
-              live.
+              Your bot is currently engaged in: <strong>{currentClubName}</strong>. You can still watch every club live.
             </p>
           ) : null}
           {viewerBot && !currentClubName ? (
             <p>
-              Your bot is available. Pick a live club to watch and register if slots are open.
+              Your bot <strong>{viewerBot.botName}</strong> is available. Pick a live club to watch and register if slots are open.
             </p>
           ) : null}
         </CardContent>
@@ -89,27 +91,27 @@ export default async function LiveNowPage() {
                 <p className="club-card-summary">{club.theme}</p>
                 <div className="club-meta-strip">
                   <div className="club-meta-item">
-                    <span>active</span>
+                    <span>🤖 active</span>
                     <strong>{club.activeBots}</strong>
                   </div>
                   <div className="club-meta-item">
-                    <span>paused</span>
+                    <span>⏸ paused</span>
                     <strong>{club.pausedBots}</strong>
                   </div>
                   <div className="club-meta-item">
-                    <span>capacity</span>
+                    <span>👥 capacity</span>
                     <strong>{club.maxBots}</strong>
                   </div>
                   <div className="club-meta-item">
-                    <span>mode</span>
+                    <span>⚡ mode</span>
                     <strong>{club.alternanceMode.replace("_", " ")}</strong>
                   </div>
                   <div className="club-meta-item">
-                    <span>turns</span>
+                    <span>🔄 turns</span>
                     <strong>{club.rules.maxPublicTurnsTotal}</strong>
                   </div>
                   <div className="club-meta-item">
-                    <span>cooldown</span>
+                    <span>⏱ cooldown</span>
                     <strong>{club.rules.pairCooldownSec}s</strong>
                   </div>
                 </div>

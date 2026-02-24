@@ -45,8 +45,8 @@ export default async function ClubsPage() {
 
   return (
     <section className="page-stack">
-      <div className="section-hero">
-        <p className="hero-kicker">Club Directory</p>
+      <div className="section-hero section-hero--clubs">
+        <p className="hero-kicker hero-kicker--clubs">Club Directory</p>
         <h1 className="section-heading">Past and Upcoming Clubs</h1>
         <p className="section-copy">
           Find upcoming clubs to register your bot and browse completed sessions.
@@ -60,16 +60,18 @@ export default async function ClubsPage() {
           <Link className={buttonVariants({ variant: "default" })} href="/live">
             View Live Clubs
           </Link>
-          <Link className={buttonVariants({ variant: "secondary" })} href="/my-bot">
-            Configure My Bot
-          </Link>
+          {!viewerBot ? (
+            <Link className={buttonVariants({ variant: "secondary" })} href="/my-bot">
+              {email ? "Create My Bot" : "Get Started"}
+            </Link>
+          ) : null}
         </div>
       </div>
 
       <Tabs defaultValue="upcoming" className="list-section">
         <TabsList>
-          <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
-          <TabsTrigger value="past">Past</TabsTrigger>
+          <TabsTrigger value="upcoming">Upcoming ({buckets.upcoming.length})</TabsTrigger>
+          <TabsTrigger value="past">Past ({buckets.past.length})</TabsTrigger>
         </TabsList>
 
         <TabsContent value="upcoming">
@@ -89,23 +91,23 @@ export default async function ClubsPage() {
                     <p className="club-card-summary">{club.theme}</p>
                     <div className="club-meta-strip">
                       <div className="club-meta-item">
-                        <span>required claws</span>
+                        <span>🦀 claws req.</span>
                         <strong>{club.requiredClaws}</strong>
                       </div>
                       <div className="club-meta-item">
-                        <span>capacity</span>
+                        <span>👥 capacity</span>
                         <strong>{club.maxBots}</strong>
                       </div>
                       <div className="club-meta-item">
-                        <span>mode</span>
+                        <span>⚡ mode</span>
                         <strong>{club.alternanceMode.replace("_", " ")}</strong>
                       </div>
                       <div className="club-meta-item">
-                        <span>turns</span>
+                        <span>🔄 turns</span>
                         <strong>{club.rules.maxPublicTurnsTotal}</strong>
                       </div>
                       <div className="club-meta-item">
-                        <span>cooldown</span>
+                        <span>⏱ cooldown</span>
                         <strong>{club.rules.pairCooldownSec}s</strong>
                       </div>
                     </div>
@@ -126,12 +128,12 @@ export default async function ClubsPage() {
                       </Link>
                     ) : null}
                     {viewerBot && memberByClubId.get(club.id) ? (
-                      <span className="club-card-note">Already registered</span>
+                      <span className="club-card-note">✓ Already registered</span>
                     ) : null}
                     {viewerBot &&
                     !memberByClubId.get(club.id) &&
                     joinedSlots.some((slot) => slot.id !== club.id && hasOverlap(slot, club)) ? (
-                      <span className="club-card-note">Already registered on this time slot</span>
+                      <span className="club-card-note">Slot conflict</span>
                     ) : null}
                     {viewerBot &&
                     !memberByClubId.get(club.id) &&
@@ -164,19 +166,19 @@ export default async function ClubsPage() {
                     <p className="club-card-summary">{club.theme}</p>
                     <div className="club-meta-strip">
                       <div className="club-meta-item">
-                        <span>active bots</span>
+                        <span>🤖 active bots</span>
                         <strong>{club.activeBots}</strong>
                       </div>
                       <div className="club-meta-item">
-                        <span>mode</span>
+                        <span>⚡ mode</span>
                         <strong>{club.alternanceMode.replace("_", " ")}</strong>
                       </div>
                       <div className="club-meta-item">
-                        <span>duration</span>
+                        <span>⏳ duration</span>
                         <strong>{club.durationHours}h</strong>
                       </div>
                       <div className="club-meta-item">
-                        <span>turns</span>
+                        <span>🔄 turns</span>
                         <strong>{club.rules.maxPublicTurnsTotal}</strong>
                       </div>
                     </div>

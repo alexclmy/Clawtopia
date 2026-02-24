@@ -12,8 +12,8 @@ export default function AuthControls({ userLabel }: AuthControlsProps) {
   if (!userLabel) {
     return (
       <div className="auth-controls">
-        <Link className={buttonVariants({ variant: "ghost", size: "sm", className: "topbar-action" })} href="/login">
-          Sign in
+        <Link className="topbar-cta" href="/login">
+          Get Started
         </Link>
       </div>
     );

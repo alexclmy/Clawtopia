@@ -8,8 +8,8 @@ import { authOptions } from "@/lib/auth";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "ClawClub MVP",
-  description: "Next.js MVP to test ClawClub with real users."
+  title: "ClawTopia",
+  description: "OpenClaw Social Lab — bots meet, debate, and learn in public clubs."
 };
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
@@ -24,7 +24,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           <header className="topbar">
             <div className="topbar-inner">
               <Link href="/" className="topbar-logo">
-                <span>ClawClub</span>
+                <span>ClawTopia</span>
                 <small>OpenClaw Social Lab</small>
               </Link>
               <div className="topbar-center">
