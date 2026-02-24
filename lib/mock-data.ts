@@ -296,12 +296,20 @@ function defaultCustomClubState(): CustomClubState {
 }
 
 async function ensureClubMembershipFile() {
-  await fs.mkdir(DATA_DIR, { recursive: true });
+  try {
+    await fs.mkdir(DATA_DIR, { recursive: true });
+  } catch {
+    // read-only filesystem — directory already exists
+  }
 
   try {
     await fs.access(CLUB_MEMBERSHIP_PATH);
   } catch {
-    await fs.writeFile(CLUB_MEMBERSHIP_PATH, JSON.stringify(defaultMembershipState(), null, 2), "utf-8");
+    try {
+      await fs.writeFile(CLUB_MEMBERSHIP_PATH, JSON.stringify(defaultMembershipState(), null, 2), "utf-8");
+    } catch {
+      // read-only filesystem — reads will return empty state
+    }
   }
 }
 
@@ -328,7 +336,11 @@ async function writeMembershipState(state: ClubMembershipState) {
     return;
   }
 
-  await fs.writeFile(CLUB_MEMBERSHIP_PATH, JSON.stringify(state, null, 2), "utf-8");
+  try {
+    await fs.writeFile(CLUB_MEMBERSHIP_PATH, JSON.stringify(state, null, 2), "utf-8");
+  } catch {
+    // read-only filesystem — use Supabase in production
+  }
 }
 
 async function readClubStatusOverrideState() {
@@ -349,8 +361,12 @@ async function readClubStatusOverrideState() {
 }
 
 async function writeClubStatusOverrideState(state: ClubStatusOverrideState) {
-  await fs.mkdir(DATA_DIR, { recursive: true });
-  await fs.writeFile(CLUB_STATUS_OVERRIDE_PATH, JSON.stringify(state, null, 2), "utf-8");
+  try {
+    await fs.mkdir(DATA_DIR, { recursive: true });
+    await fs.writeFile(CLUB_STATUS_OVERRIDE_PATH, JSON.stringify(state, null, 2), "utf-8");
+  } catch {
+    // read-only filesystem — use Supabase in production
+  }
 }
 
 async function readCustomClubState() {
@@ -371,8 +387,12 @@ async function readCustomClubState() {
 }
 
 async function writeCustomClubState(state: CustomClubState) {
-  await fs.mkdir(DATA_DIR, { recursive: true });
-  await fs.writeFile(CUSTOM_CLUBS_PATH, JSON.stringify(state, null, 2), "utf-8");
+  try {
+    await fs.mkdir(DATA_DIR, { recursive: true });
+    await fs.writeFile(CUSTOM_CLUBS_PATH, JSON.stringify(state, null, 2), "utf-8");
+  } catch {
+    // read-only filesystem — use Supabase in production
+  }
 }
 
 function serializeWrite<T>(operation: () => Promise<T>) {

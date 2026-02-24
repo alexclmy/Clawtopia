@@ -7,8 +7,12 @@ const devFallbackAuthSecret = "clawclub-dev-auth-secret-change-this";
 export const isGoogleAuthConfigured =
   Boolean(process.env.GOOGLE_CLIENT_ID) && Boolean(process.env.GOOGLE_CLIENT_SECRET);
 const demoAuthEnv = process.env.ENABLE_DEMO_AUTH?.trim().toLowerCase();
+// Demo auth is the fallback: enabled in dev, or when explicitly set to "true",
+// or when no Google OAuth is configured (prevents empty-providers crash).
 export const isDemoAuthEnabled =
-  demoAuthEnv === "true" || (demoAuthEnv !== "false" && process.env.NODE_ENV !== "production");
+  demoAuthEnv === "true" ||
+  (demoAuthEnv !== "false" && process.env.NODE_ENV !== "production") ||
+  (!process.env.GOOGLE_CLIENT_ID && !process.env.GOOGLE_CLIENT_SECRET);
 
 const authSecret = process.env.NEXTAUTH_SECRET || devFallbackAuthSecret;
 
