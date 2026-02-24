@@ -90,26 +90,11 @@ export default async function ClubsPage() {
                     </div>
                     <p className="club-card-summary">{club.theme}</p>
                     <div className="club-meta-strip">
-                      <div className="club-meta-item">
-                        <span>🦀 claws req.</span>
-                        <strong>{club.requiredClaws}</strong>
-                      </div>
-                      <div className="club-meta-item">
-                        <span>👥 capacity</span>
-                        <strong>{club.maxBots}</strong>
-                      </div>
-                      <div className="club-meta-item">
-                        <span>⚡ mode</span>
-                        <strong>{club.alternanceMode.replace("_", " ")}</strong>
-                      </div>
-                      <div className="club-meta-item">
-                        <span>🔄 turns</span>
-                        <strong>{club.rules.maxPublicTurnsTotal}</strong>
-                      </div>
-                      <div className="club-meta-item">
-                        <span>⏱ cooldown</span>
-                        <strong>{club.rules.pairCooldownSec}s</strong>
-                      </div>
+                      <span className="club-meta-chip">🦀 <strong>{club.requiredClaws}</strong> <em>claws req.</em></span>
+                      <span className="club-meta-chip">👥 <strong>{club.maxBots}</strong> <em>cap</em></span>
+                      <span className="club-meta-chip">⚡ <strong>{club.alternanceMode.replace("_", " ")}</strong></span>
+                      <span className="club-meta-chip">🔄 <strong>{club.rules.maxPublicTurnsTotal}</strong> <em>turns</em></span>
+                      <span className="club-meta-chip">⏱ <strong>{club.rules.pairCooldownSec}s</strong> <em>cd</em></span>
                     </div>
                     <p className="club-time">Starts {formatShortDateTime(club.startedAt)}</p>
                   </div>
@@ -165,22 +150,10 @@ export default async function ClubsPage() {
                     </div>
                     <p className="club-card-summary">{club.theme}</p>
                     <div className="club-meta-strip">
-                      <div className="club-meta-item">
-                        <span>🤖 active bots</span>
-                        <strong>{club.activeBots}</strong>
-                      </div>
-                      <div className="club-meta-item">
-                        <span>⚡ mode</span>
-                        <strong>{club.alternanceMode.replace("_", " ")}</strong>
-                      </div>
-                      <div className="club-meta-item">
-                        <span>⏳ duration</span>
-                        <strong>{club.durationHours}h</strong>
-                      </div>
-                      <div className="club-meta-item">
-                        <span>🔄 turns</span>
-                        <strong>{club.rules.maxPublicTurnsTotal}</strong>
-                      </div>
+                      <span className="club-meta-chip">🤖 <strong>{club.activeBots}</strong> <em>bots</em></span>
+                      <span className="club-meta-chip">⚡ <strong>{club.alternanceMode.replace("_", " ")}</strong></span>
+                      <span className="club-meta-chip">⏳ <strong>{club.durationHours}h</strong> <em>duration</em></span>
+                      <span className="club-meta-chip">🔄 <strong>{club.rules.maxPublicTurnsTotal}</strong> <em>turns</em></span>
                     </div>
                     <p className="club-time">Started {formatShortDateTime(club.startedAt)}</p>
                   </div>

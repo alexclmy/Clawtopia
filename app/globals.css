@@ -9,7 +9,7 @@
   --line-strong: #1a1a1a;
   --text: #111111;
   --text-soft: #5a5a5a;
-  --green: #a9ff3b;
+  --green: #1a7a35;
   --orange: #ff7e3f;
   --orange-dark: #c95a1a;
   --amber: #ffc053;
@@ -162,7 +162,7 @@ body {
   height: 7px;
   border-radius: 999px;
   background: var(--green);
-  box-shadow: 0 0 0 2px rgba(169, 255, 59, 0.3);
+  box-shadow: 0 0 0 2px rgba(26, 122, 53, 0.22);
   display: inline-block;
   flex-shrink: 0;
 }
@@ -318,7 +318,20 @@ body {
 .ui-card-title { margin: 0; font-size: 0.93rem; font-weight: 700; }
 .ui-card-description { margin: 0.18rem 0 0; font-size: 0.8rem; color: var(--text-soft); }
 
-.hero, .section-hero { padding: 1rem; border-radius: 16px; }
+.hero { padding: 1rem; border-radius: 16px; }
+
+.section-hero {
+  padding: 1.35rem 1.2rem;
+  border-radius: 16px;
+  display: grid;
+  gap: 0.65rem;
+  align-content: start;
+}
+
+.section-hero .section-heading { margin: 0; }
+.section-hero .section-copy { margin: 0; }
+.section-hero .hero-facts { margin-top: 0; }
+.section-hero .hero-actions { margin-top: 0; }
 
 /* ---- Hero ---- */
 .hero-kicker {
@@ -471,30 +484,46 @@ body {
 .status-badge, .club-card-status, .ui-badge {
   display: inline-flex;
   align-items: center;
-  border-radius: 999px;
-  padding: 0.13rem 0.5rem;
-  font-size: 0.67rem;
+  border-radius: 6px;
+  padding: 0.15rem 0.55rem;
+  font-size: 0.66rem;
   font-weight: 700;
   border: 1px solid transparent;
   white-space: nowrap;
+  letter-spacing: 0.02em;
 }
 
+/* Status: live / active */
 .status-running, .ui-badge--success {
   background: var(--status-run-bg);
   color: var(--status-run-text);
   border-color: var(--status-run-line);
+  border-style: solid;
 }
 
+/* Status: scheduled / warning */
 .status-paused, .status-scheduled, .status-ending, .ui-badge--warning {
   background: var(--status-sched-bg);
   color: var(--status-sched-text);
   border-color: var(--status-sched-line);
+  border-style: solid;
 }
 
-.status-ended, .ui-badge--default, .ui-badge--secondary, .ui-badge--outline {
+/* Status: neutral / ended — dashed to distinguish from buttons */
+.status-ended, .ui-badge--default, .ui-badge--secondary {
   background: var(--status-end-bg);
   color: var(--status-end-text);
   border-color: var(--status-end-line);
+  border-style: dashed;
+}
+
+/* Outline badge — dashed, no fill */
+.ui-badge--outline {
+  background: transparent;
+  color: var(--text-soft);
+  border-color: #c8c8c8;
+  border-style: dashed;
+  border-width: 1.5px;
 }
 
 /* ---- Section containers ---- */
@@ -808,7 +837,7 @@ body {
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.08);
 }
 
-.club-card-body { padding: 0.95rem; display: grid; gap: 0.5rem; flex: 1; }
+.club-card-body { padding: 1rem 1.05rem; display: grid; gap: 0.6rem; flex: 1; }
 
 .club-card-headline {
   display: flex;
@@ -833,36 +862,39 @@ body {
 .club-card-status { text-transform: lowercase; font-size: 0.65rem; font-weight: 700; flex-shrink: 0; }
 
 .club-meta-strip {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.3rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.32rem;
 }
 
-.club-meta-item {
-  border: 1px solid #eaeaea;
-  border-radius: 9px;
+/* Parameter chips — inline emoji + value + short label */
+.club-meta-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  border: 1px solid #e2e2e2;
+  border-radius: 6px;
   background: var(--surface-2);
-  padding: 0.38rem 0.48rem;
-  min-height: 46px;
-  display: grid;
-  align-content: center;
-  gap: 0.1rem;
+  padding: 0.26rem 0.55rem;
+  font-size: 0.78rem;
+  white-space: nowrap;
+  box-shadow: 1px 1px 0 #e0e0e0;
 }
 
-.club-meta-item span {
-  font-size: 0.6rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: #aaa;
-  line-height: 1;
-}
-
-.club-meta-item strong {
-  font-size: 0.82rem;
-  line-height: 1.2;
-  color: #1a1a1a;
-  font-family: "Courier New", monospace;
+.club-meta-chip strong {
   font-weight: 700;
+  font-family: "Courier New", monospace;
+  color: #111;
+  font-size: 0.82rem;
+}
+
+.club-meta-chip em {
+  font-style: normal;
+  font-size: 0.6rem;
+  color: #bbb;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
 }
 
 .club-time { margin: 0; font-size: 0.74rem; color: #aaa; font-family: "Courier New", monospace; }
@@ -1030,7 +1062,7 @@ body {
   font-family: "Courier New", monospace;
 }
 
-.phaser-bot-marker--active  .phaser-bot-sprite { box-shadow: 0 0 0 2px rgba(169,255,59,.55), 0 2px 0 rgba(0,0,0,.22); }
+.phaser-bot-marker--active  .phaser-bot-sprite { box-shadow: 0 0 0 2px rgba(26,122,53,.5), 0 2px 0 rgba(0,0,0,.22); }
 .phaser-bot-marker--paused  .phaser-bot-sprite { filter: grayscale(.4); }
 .phaser-bot-marker--offline .phaser-bot-sprite { filter: grayscale(.65) brightness(.9); }
 .phaser-bot-marker.is-selected .phaser-bot-sprite { transform: translateY(-1px); box-shadow: 0 0 0 3px #fff, 0 4px 0 rgba(0,0,0,.22); }
@@ -1386,6 +1418,8 @@ pre {
 /* ---- Section hero page accents ---- */
 .section-hero--live {
   border-left: 3px solid var(--green);
+  padding: 1.6rem 1.35rem;
+  gap: 0.85rem;
 }
 
 .section-hero--bot {

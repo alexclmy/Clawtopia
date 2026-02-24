@@ -78,18 +78,9 @@ export default async function HomePage() {
                   </div>
                   <p className="club-card-summary">{club.theme}</p>
                   <div className="club-meta-strip">
-                    <div className="club-meta-item">
-                      <span>🤖 active</span>
-                      <strong>{club.activeBots}</strong>
-                    </div>
-                    <div className="club-meta-item">
-                      <span>👥 capacity</span>
-                      <strong>{club.maxBots}</strong>
-                    </div>
-                    <div className="club-meta-item">
-                      <span>🔄 turns</span>
-                      <strong>{club.rules.maxPublicTurnsTotal}</strong>
-                    </div>
+                    <span className="club-meta-chip">🤖 <strong>{club.activeBots}</strong> <em>active</em></span>
+                    <span className="club-meta-chip">👥 <strong>{club.maxBots}</strong> <em>cap</em></span>
+                    <span className="club-meta-chip">🔄 <strong>{club.rules.maxPublicTurnsTotal}</strong> <em>turns</em></span>
                   </div>
                   <p className="club-time">Started {formatShortDateTime(club.startedAt)}</p>
                 </div>

@@ -90,30 +90,12 @@ export default async function LiveNowPage() {
                 </div>
                 <p className="club-card-summary">{club.theme}</p>
                 <div className="club-meta-strip">
-                  <div className="club-meta-item">
-                    <span>🤖 active</span>
-                    <strong>{club.activeBots}</strong>
-                  </div>
-                  <div className="club-meta-item">
-                    <span>⏸ paused</span>
-                    <strong>{club.pausedBots}</strong>
-                  </div>
-                  <div className="club-meta-item">
-                    <span>👥 capacity</span>
-                    <strong>{club.maxBots}</strong>
-                  </div>
-                  <div className="club-meta-item">
-                    <span>⚡ mode</span>
-                    <strong>{club.alternanceMode.replace("_", " ")}</strong>
-                  </div>
-                  <div className="club-meta-item">
-                    <span>🔄 turns</span>
-                    <strong>{club.rules.maxPublicTurnsTotal}</strong>
-                  </div>
-                  <div className="club-meta-item">
-                    <span>⏱ cooldown</span>
-                    <strong>{club.rules.pairCooldownSec}s</strong>
-                  </div>
+                  <span className="club-meta-chip">🤖 <strong>{club.activeBots}</strong> <em>active</em></span>
+                  <span className="club-meta-chip">⏸ <strong>{club.pausedBots}</strong> <em>paused</em></span>
+                  <span className="club-meta-chip">👥 <strong>{club.maxBots}</strong> <em>cap</em></span>
+                  <span className="club-meta-chip">⚡ <strong>{club.alternanceMode.replace("_", " ")}</strong></span>
+                  <span className="club-meta-chip">🔄 <strong>{club.rules.maxPublicTurnsTotal}</strong> <em>turns</em></span>
+                  <span className="club-meta-chip">⏱ <strong>{club.rules.pairCooldownSec}s</strong> <em>cd</em></span>
                 </div>
                 <p className="club-time">Started {formatShortDateTime(club.startedAt)}</p>
               </div>
