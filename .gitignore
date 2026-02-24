@@ -16,3 +16,4 @@ data/bot-registry.json
 data/club-memberships.json
 data/club-engine
 *.tsbuildinfo
+pixel-agents-repo/
