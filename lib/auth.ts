@@ -12,10 +12,6 @@ export const isDemoAuthEnabled =
 
 const authSecret = process.env.NEXTAUTH_SECRET || devFallbackAuthSecret;
 
-if (!process.env.NEXTAUTH_SECRET && process.env.NODE_ENV === "production") {
-  throw new Error("NEXTAUTH_SECRET is required in production.");
-}
-
 const providers: NextAuthOptions["providers"] = [];
 
 if (isDemoAuthEnabled) {
@@ -53,8 +49,17 @@ if (isGoogleAuthConfigured) {
   );
 }
 
-if (providers.length === 0) {
-  throw new Error("No auth provider configured. Enable Google OAuth or set ENABLE_DEMO_AUTH=true.");
+// Runtime-only validation — not at module level so the build doesn't fail
+// when env vars are absent from the Vercel build environment.
+// Call this inside request handlers or server components if you need an
+// early, explicit error instead of a silent auth failure.
+export function assertAuthConfig(): void {
+  if (!process.env.NEXTAUTH_SECRET && process.env.NODE_ENV === "production") {
+    throw new Error("NEXTAUTH_SECRET is required in production.");
+  }
+  if (providers.length === 0) {
+    throw new Error("No auth provider configured. Enable Google OAuth or set ENABLE_DEMO_AUTH=true.");
+  }
 }
 
 export const authOptions: NextAuthOptions = {
