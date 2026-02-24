@@ -36,20 +36,28 @@ function defaultState(): BotRegistryState {
 }
 
 async function ensureRegistryFile() {
-  await fs.mkdir(DATA_DIR, { recursive: true });
+  try {
+    await fs.mkdir(DATA_DIR, { recursive: true });
+  } catch {
+    // read-only filesystem (e.g. Vercel) — directory already exists
+  }
 
   try {
     await fs.access(REGISTRY_PATH);
   } catch {
-    await fs.writeFile(REGISTRY_PATH, JSON.stringify(defaultState(), null, 2), "utf-8");
+    try {
+      await fs.writeFile(REGISTRY_PATH, JSON.stringify(defaultState(), null, 2), "utf-8");
+    } catch {
+      // read-only filesystem — file doesn't exist and can't be created; reads will return empty state
+    }
   }
 }
 
 async function readState() {
   await ensureRegistryFile();
-  const content = await fs.readFile(REGISTRY_PATH, "utf-8");
 
   try {
+    const content = await fs.readFile(REGISTRY_PATH, "utf-8");
     const parsed = JSON.parse(content) as BotRegistryState;
     const bots = (parsed.bots || []).map((bot) => ({
       ...bot,
@@ -66,7 +74,11 @@ async function readState() {
 }
 
 async function writeState(state: BotRegistryState) {
-  await fs.writeFile(REGISTRY_PATH, JSON.stringify(state, null, 2), "utf-8");
+  try {
+    await fs.writeFile(REGISTRY_PATH, JSON.stringify(state, null, 2), "utf-8");
+  } catch {
+    // read-only filesystem — writes are a no-op; use Supabase in production
+  }
 }
 
 function serializeWrite<T>(operation: () => Promise<T>) {
