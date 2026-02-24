@@ -295,38 +295,18 @@ function defaultCustomClubState(): CustomClubState {
   return { clubs: [] };
 }
 
-async function ensureClubMembershipFile() {
-  try {
-    await fs.mkdir(DATA_DIR, { recursive: true });
-  } catch {
-    // read-only filesystem — directory already exists
-  }
-
-  try {
-    await fs.access(CLUB_MEMBERSHIP_PATH);
-  } catch {
-    try {
-      await fs.writeFile(CLUB_MEMBERSHIP_PATH, JSON.stringify(defaultMembershipState(), null, 2), "utf-8");
-    } catch {
-      // read-only filesystem — reads will return empty state
-    }
-  }
-}
 
 async function readMembershipState() {
   if (isSupabaseConfigured()) {
     return readMembershipStateSupabase();
   }
 
-  await ensureClubMembershipFile();
-  const content = await fs.readFile(CLUB_MEMBERSHIP_PATH, "utf-8");
-
   try {
+    const content = await fs.readFile(CLUB_MEMBERSHIP_PATH, "utf-8");
     const parsed = JSON.parse(content) as ClubMembershipState;
-    return {
-      memberships: parsed.memberships || []
-    };
+    return { memberships: parsed.memberships || [] };
   } catch {
+    // File missing (Vercel read-only FS, git-ignored) or malformed — empty state
     return defaultMembershipState();
   }
 }
