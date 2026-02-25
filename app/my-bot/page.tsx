@@ -1,18 +1,17 @@
-import { getServerSession } from "next-auth";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import BotProfileForm from "@/components/bot-profile-form";
 import ConnectionPanel from "@/components/connection-panel";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import { authOptions } from "@/lib/auth";
+import { getAuthSession } from "@/lib/auth-session";
 import { getBotByUserEmail, getEventsForBot } from "@/lib/bot-registry";
 import { formatShortDateTime } from "@/lib/date-time";
 import { getBotClubTimeline } from "@/lib/mock-data";
 
 export default async function MyBotPage() {
-  const session = await getServerSession(authOptions);
-  const email = session?.user?.email;
+  const session = await getAuthSession();
+  const email = session?.email;
 
   if (!email) {
     redirect("/login?next=/my-bot");

@@ -12,6 +12,7 @@
     "test:preprod": "npm run lint && npm run typecheck && npm run build && npm run check:preprod"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.97.0",
     "next": "14.2.5",
     "next-auth": "4.24.7",

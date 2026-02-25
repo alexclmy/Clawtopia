@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getAuthSession } from "@/lib/auth-session";
 import { getBotByUserEmail } from "@/lib/bot-registry";
 import { submitClubVote } from "@/lib/club-results";
 import { getClubById } from "@/lib/mock-data";
@@ -29,15 +28,12 @@ function parsePayload(value: unknown): VotePayload | null {
     return null;
   }
 
-  return {
-    targetBotId,
-    rationaleShort
-  };
+  return { targetBotId, rationaleShort };
 }
 
 export async function POST(request: Request, context: RouteContext) {
-  const session = await getServerSession(authOptions);
-  const email = session?.user?.email;
+  const session = await getAuthSession();
+  const email = session?.email;
 
   if (!email) {
     return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
@@ -70,8 +66,5 @@ export async function POST(request: Request, context: RouteContext) {
     return NextResponse.json({ error: result.reason }, { status: 400 });
   }
 
-  return NextResponse.json({
-    ok: true,
-    alreadyVoted: result.alreadyVoted
-  });
+  return NextResponse.json({ ok: true, alreadyVoted: result.alreadyVoted });
 }

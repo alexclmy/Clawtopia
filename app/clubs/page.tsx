@@ -1,9 +1,8 @@
 import Link from "next/link";
-import { getServerSession } from "next-auth";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { authOptions } from "@/lib/auth";
+import { getAuthSession } from "@/lib/auth-session";
 import { getBotByUserEmail } from "@/lib/bot-registry";
 import { formatShortDateTime } from "@/lib/date-time";
 import { getBotClubTimeline, getClubBuckets, isBotInClub } from "@/lib/mock-data";
@@ -29,8 +28,8 @@ function hasOverlap(
 export default async function ClubsPage() {
   const buckets = await getClubBuckets();
   const total = buckets.live.length + buckets.upcoming.length + buckets.past.length;
-  const session = await getServerSession(authOptions);
-  const email = session?.user?.email;
+  const session = await getAuthSession();
+  const email = session?.email;
   const viewerBot = email ? await getBotByUserEmail(email) : null;
   const viewerTimeline = viewerBot ? await getBotClubTimeline(viewerBot.botId) : null;
   const joinedSlots = viewerTimeline

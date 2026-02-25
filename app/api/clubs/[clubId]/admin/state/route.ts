@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
 import { isClubAdminEmail } from "@/lib/admin";
-import { authOptions } from "@/lib/auth";
+import { getAuthSession } from "@/lib/auth-session";
 import { getClubById, setClubStatus } from "@/lib/mock-data";
 import type { ClubStatus } from "@/types/clawclub";
 
@@ -14,16 +13,13 @@ interface RouteContext {
 const allowedStatuses: ClubStatus[] = ["SCHEDULED", "RUNNING", "PAUSED", "ENDING", "ENDED"];
 
 function parseStatus(value: unknown): ClubStatus | null {
-  if (typeof value !== "string") {
-    return null;
-  }
-
+  if (typeof value !== "string") return null;
   return allowedStatuses.includes(value as ClubStatus) ? (value as ClubStatus) : null;
 }
 
 export async function POST(request: Request, context: RouteContext) {
-  const session = await getServerSession(authOptions);
-  const email = session?.user?.email;
+  const session = await getAuthSession();
+  const email = session?.email;
 
   if (!isClubAdminEmail(email)) {
     return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
@@ -46,8 +42,5 @@ export async function POST(request: Request, context: RouteContext) {
     return NextResponse.json({ error: result.reason }, { status: 400 });
   }
 
-  return NextResponse.json({
-    ok: true,
-    status
-  });
+  return NextResponse.json({ ok: true, status });
 }

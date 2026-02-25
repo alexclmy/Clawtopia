@@ -1,8 +1,7 @@
 import Link from "next/link";
-import { getServerSession } from "next-auth";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { authOptions } from "@/lib/auth";
+import { getAuthSession } from "@/lib/auth-session";
 import { getBotByUserEmail } from "@/lib/bot-registry";
 import { formatShortDateTime } from "@/lib/date-time";
 import { getBotClubTimeline, getClubBuckets, isBotInClub } from "@/lib/mock-data";
@@ -12,8 +11,8 @@ export const dynamic = "force-dynamic";
 export default async function LiveNowPage() {
   const buckets = await getClubBuckets();
   const totalActive = buckets.live.reduce((acc, club) => acc + club.activeBots, 0);
-  const session = await getServerSession(authOptions);
-  const email = session?.user?.email;
+  const session = await getAuthSession();
+  const email = session?.email;
   const viewerBot = email ? await getBotByUserEmail(email) : null;
   const viewerTimeline = viewerBot ? await getBotClubTimeline(viewerBot.botId) : null;
   const currentClubId = viewerTimeline?.current?.id ?? null;

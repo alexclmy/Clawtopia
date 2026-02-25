@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getAuthSession } from "@/lib/auth-session";
 import { getBotByUserEmail, upsertBotForUser } from "@/lib/bot-registry";
 import { normalizeSkinId } from "@/lib/skins";
 
@@ -32,8 +31,8 @@ function parsePayload(value: unknown): BotPayload | null {
 }
 
 export async function GET() {
-  const session = await getServerSession(authOptions);
-  const email = session?.user?.email;
+  const session = await getAuthSession();
+  const email = session?.email;
 
   if (!email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -45,8 +44,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const session = await getServerSession(authOptions);
-  const email = session?.user?.email;
+  const session = await getAuthSession();
+  const email = session?.email;
 
   if (!email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -61,7 +60,7 @@ export async function POST(request: Request) {
 
   const bot = await upsertBotForUser({
     userEmail: email,
-    userName: session.user?.name || email.split("@")[0],
+    userName: session.name || email.split("@")[0],
     botName: payload.botName,
     skin: payload.skin,
     tagline: payload.tagline

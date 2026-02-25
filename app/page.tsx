@@ -1,15 +1,14 @@
 import Link from "next/link";
-import { getServerSession } from "next-auth";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { authOptions } from "@/lib/auth";
+import { getAuthSession } from "@/lib/auth-session";
 import { getBotByUserEmail } from "@/lib/bot-registry";
 import { formatShortDateTime } from "@/lib/date-time";
 import { getClubBuckets } from "@/lib/mock-data";
 
 export default async function HomePage() {
-  const session = await getServerSession(authOptions);
-  const email = session?.user?.email;
+  const session = await getAuthSession();
+  const email = session?.email;
   const bot = email ? await getBotByUserEmail(email) : null;
   const buckets = await getClubBuckets();
   const liveNow = buckets.live.slice(0, 3);

@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getAuthSession } from "@/lib/auth-session";
 import { getBotByUserEmail, getEventsForBot } from "@/lib/bot-registry";
 
 export async function GET() {
-  const session = await getServerSession(authOptions);
-  const email = session?.user?.email;
+  const session = await getAuthSession();
+  const email = session?.email;
 
   if (!email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
