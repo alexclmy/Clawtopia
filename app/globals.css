@@ -901,9 +901,37 @@ body {
   min-height: 420px;
   border: 2px solid #1a1a1a;
   border-radius: 12px;
-  background: #89d97d;
+  background: #0a0815;
   overflow: hidden;
   box-shadow: inset 0 0 0 1px #1a1a1a, 0 8px 20px rgba(0,0,0,.14);
+}
+
+.club-world-3d-shell { width: 100%; height: 480px; border-radius: 12px; overflow: hidden; }
+.club-world-3d-shell canvas { display: block; border-radius: 12px; }
+
+.bot-3d-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  pointer-events: auto;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+.bot-3d-name {
+  font-family: "Inter", system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  color: #d0d0e0;
+  text-shadow: 0 1px 4px rgba(0,0,0,.8);
+}
+.bot-3d-status {
+  font-family: "Inter", system-ui, sans-serif;
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-shadow: 0 1px 3px rgba(0,0,0,.8);
 }
 
 .phaser-world-canvas { width: 100%; height: 420px; }
@@ -1333,6 +1361,7 @@ pre {
   .topbar-nav { width: 100%; overflow-x: auto; justify-content: flex-start; }
   .club-meta-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .world-stage { min-height: 320px; }
+  .club-world-3d-shell { height: 380px; }
   .phaser-world-canvas { height: 320px; }
   .result-summary-grid { grid-template-columns: 1fr; }
   .admin-form-grid { grid-template-columns: 1fr; }
