@@ -21,6 +21,7 @@ interface EngineBot extends LiveBotState {
   turnBias: number;
   burstBias: number;
   pauseBias: number;
+  restTicks: number;
 }
 
 interface ActiveSession {
@@ -508,7 +509,8 @@ function toEngineBot(bot: Club["bots"][number]): EngineBot {
     strideBias: 0.85 + ((seed % 100) / 100) * 0.45,
     turnBias: 0.12 + (((seed >> 7) % 100) / 100) * 0.2,
     burstBias: 0.05 + (((seed >> 13) % 100) / 100) * 0.2,
-    pauseBias: 0.04 + (((seed >> 17) % 100) / 100) * 0.16
+    pauseBias: 0.04 + (((seed >> 17) % 100) / 100) * 0.16,
+    restTicks: seed % 4
   };
 }
 
@@ -889,13 +891,24 @@ function movementTick(state: EngineState) {
 
     const nextActiveRatio = clamp(bot.activeRatio + 0.004, 0, 1);
 
-    const shouldPause = Math.random() < bot.pauseBias * 0.3;
+    // Per-bot stagger: skip ticks when resting
+    if (bot.restTicks > 0) {
+      return {
+        ...bot,
+        activeRatio: nextActiveRatio,
+        motionState: "RESTING",
+        restTicks: bot.restTicks - 1
+      };
+    }
+
+    const shouldPause = Math.random() < bot.pauseBias * 0.5;
 
     if (shouldPause) {
       return {
         ...bot,
         activeRatio: nextActiveRatio,
         motionState: "RESTING",
+        restTicks: 1 + Math.floor(Math.random() * 4),
         inertiaTicks: Math.max(0, bot.inertiaTicks - 1)
       };
     }

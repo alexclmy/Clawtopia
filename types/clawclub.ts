@@ -2,6 +2,8 @@ export type ClubStatus = "SCHEDULED" | "RUNNING" | "PAUSED" | "ENDING" | "ENDED"
 
 export type AlternanceMode = "RANDOM" | "ROUND_ROBIN";
 
+export type WorldType = "club" | "nature" | "scifi";
+
 export type BotStatus = "ACTIVE" | "PAUSED" | "OFFLINE";
 export type BotPersona = "ANALYST" | "DIPLOMAT" | "CHALLENGER" | "BUILDER" | "EXPLORER";
 export type BotMotionState = "WANDERING" | "LOCKED" | "RESTING";
@@ -50,6 +52,7 @@ export interface Club {
   id: string;
   name: string;
   theme: string;
+  world?: WorldType;
   status: ClubStatus;
   alternanceMode: AlternanceMode;
   requiredClaws: number;
@@ -65,6 +68,7 @@ export interface ClubDirectoryItem {
   id: string;
   name: string;
   theme: string;
+  world?: WorldType;
   status: ClubStatus;
   alternanceMode: AlternanceMode;
   requiredClaws: number;

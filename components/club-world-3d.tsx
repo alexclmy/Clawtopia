@@ -1,11 +1,13 @@
 "use client";
 
-import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { OrbitControls, Html, Environment } from "@react-three/drei";
+import { Canvas, useFrame } from "@react-three/fiber";
+import { OrbitControls, Html } from "@react-three/drei";
 import { useRef, useMemo, useEffect, useState, useCallback } from "react";
 import * as THREE from "three";
 import { normalizeSkinId } from "@/lib/skins";
-import type { BotStatus } from "@/types/clawclub";
+import type { BotStatus, WorldType } from "@/types/clawclub";
+import NatureEnvironment from "@/components/world-nature-env";
+import SciFiEnvironment from "@/components/world-scifi-env";
 
 /* ── Types ──────────────────────────────────────────────────── */
 
@@ -24,6 +26,7 @@ interface ClubWorld3DProps {
   bots: WorldBot[];
   selectedBotId: string;
   onSelectBot: (botId: string) => void;
+  world?: WorldType;
 }
 
 /* ── Constants ──────────────────────────────────────────────── */
@@ -32,7 +35,7 @@ const ROOM_W = 20;
 const ROOM_D = 14;
 const ROOM_H = 4;
 
-const LERP_SPEED = 0.07;
+const LERP_SPEED = 0.09;
 const WALK_PHASE_MULT = 12;
 const LEG_AMP = 0.5;
 const KNEE_AMP = 0.55;
@@ -99,6 +102,13 @@ function HumanoidBot({
 
   const color = useMemo(() => bodyColor(bot.skin, bot.status), [bot.skin, bot.status]);
   const skinColor = useMemo(() => SKIN_COLORS[normalizeSkinId(bot.skin)] ?? SKIN_COLORS.default, [bot.skin]);
+
+  // Per-bot unique phase offset so idle animations don't sync
+  const phaseOffset = useMemo(() => {
+    let h = 0;
+    for (let i = 0; i < bot.id.length; i++) h = (h * 31 + bot.id.charCodeAt(i)) & 0x7fffffff;
+    return (h % 10000) / 10000 * Math.PI * 2;
+  }, [bot.id]);
 
   const st = useRef({
     cx: 0, cz: 0, tx: 0, tz: 0,
@@ -169,7 +179,7 @@ function HumanoidBot({
     rShinRef.current.rotation.x = rKnee;
 
     if (bot.locked && a < 0.15) {
-      const t = Date.now() / 700;
+      const t = Date.now() / 700 + phaseOffset;
       lArmRef.current.rotation.x = Math.sin(t) * 0.18 - 0.08;
       rArmRef.current.rotation.x = Math.sin(t + 1.3) * 0.22 - 0.08;
       lForeRef.current.rotation.x = -Math.abs(Math.sin(t * 0.8)) * 0.35 - 0.15;
@@ -182,12 +192,15 @@ function HumanoidBot({
     }
 
     if (a < 0.05) {
-      const breathe = Math.sin(Date.now() / 1100) * 0.008;
+      const t = Date.now() / 1000;
+      const breathe = Math.sin(t * 0.9 + phaseOffset) * 0.008;
       bodyRef.current.scale.y = 1 + breathe;
-      headRef.current.rotation.y = Math.sin(Date.now() / 2800) * 0.06;
-      headRef.current.rotation.x = Math.sin(Date.now() / 2200) * 0.03;
+      headRef.current.rotation.y = Math.sin(t * 0.36 + phaseOffset) * 0.08;
+      headRef.current.rotation.x = Math.sin(t * 0.45 + phaseOffset * 1.3) * 0.04;
+      bodyRef.current.rotation.z = Math.sin(t * 0.25 + phaseOffset * 0.7) * 0.015;
     } else {
       bodyRef.current.scale.y = 1;
+      bodyRef.current.rotation.z = 0;
       headRef.current.rotation.set(0, 0, 0);
     }
   });
@@ -935,9 +948,23 @@ function ClubEnvironment() {
   );
 }
 
+/* ── World theme configs ──────────────────────────────────────── */
+
+const WORLD_CONFIG: Record<string, { bg: string; fogNear: number; fogFar: number }> = {
+  club: { bg: "#0d0a18", fogNear: 16, fogFar: 35 },
+  nature: { bg: "#88bbdd", fogNear: 20, fogFar: 50 },
+  scifi: { bg: "#060612", fogNear: 16, fogFar: 40 },
+};
+
+function WorldEnvironment({ world }: { world: string }) {
+  if (world === "nature") return <NatureEnvironment />;
+  if (world === "scifi") return <SciFiEnvironment />;
+  return <ClubEnvironment />;
+}
+
 /* ── Main export ─────────────────────────────────────────────── */
 
-export default function ClubWorld3D({ bots, selectedBotId, onSelectBot }: ClubWorld3DProps) {
+export default function ClubWorld3D({ bots, selectedBotId, onSelectBot, world = "club" }: ClubWorld3DProps) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
@@ -951,11 +978,13 @@ export default function ClubWorld3D({ bots, selectedBotId, onSelectBot }: ClubWo
     [onSelectBot],
   );
 
+  const cfg = WORLD_CONFIG[world] ?? WORLD_CONFIG.club;
+
   if (!mounted) {
     return (
       <div
         className="club-world-3d-shell"
-        style={{ width: "100%", height: "100%", minHeight: 420, background: "#0d0a18", borderRadius: 12 }}
+        style={{ width: "100%", height: "100%", minHeight: 420, background: cfg.bg, borderRadius: 12 }}
       />
     );
   }
@@ -964,13 +993,13 @@ export default function ClubWorld3D({ bots, selectedBotId, onSelectBot }: ClubWo
     <div className="club-world-3d-shell">
       <Canvas
         camera={{ position: [0, 7, 13], fov: 52, near: 0.1, far: 100 }}
-        style={{ background: "#0d0a18" }}
+        style={{ background: cfg.bg }}
         onPointerMissed={() => {}}
         shadows
       >
-        <fog attach="fog" args={["#0d0a18", 16, 35]} />
+        <fog attach="fog" args={[cfg.bg, cfg.fogNear, cfg.fogFar]} />
 
-        <ClubEnvironment />
+        <WorldEnvironment world={world} />
 
         {normalizedBots.map((bot) => (
           <HumanoidBot

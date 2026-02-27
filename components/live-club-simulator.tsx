@@ -16,7 +16,8 @@ import type {
   Club,
   ClubInteractionRecord,
   ClubLiveState,
-  LiveBotState
+  LiveBotState,
+  WorldType
 } from "@/types/clawclub";
 
 const EMPTY_BOTS: LiveBotState[] = [];
@@ -177,7 +178,7 @@ export default function LiveClubSimulator({ club, canViewBotMemory }: LiveClubSi
         </div>
 
         <div className="world-stage">
-          <ClubWorld3D bots={bots} selectedBotId={selectedBotId} onSelectBot={setSelectedBotId} />
+          <ClubWorld3D bots={bots} selectedBotId={selectedBotId} onSelectBot={setSelectedBotId} world={club.world} />
         </div>
 
         {fetchError ? <Alert variant="error">{fetchError}</Alert> : null}
