@@ -1,16 +1,15 @@
-import { getServerSession } from "next-auth";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import AdminClubsPanel from "@/components/admin-clubs-panel";
 import { buttonVariants } from "@/components/ui/button";
 import { isClubAdminEmail } from "@/lib/admin";
-import { authOptions } from "@/lib/auth";
+import { getAuthSession } from "@/lib/auth-session";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminClubsPage() {
-  const session = await getServerSession(authOptions);
-  const email = session?.user?.email;
+  const session = await getAuthSession();
+  const email = session?.email;
 
   if (!email) {
     redirect("/login?next=/admin/clubs");

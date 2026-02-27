@@ -1,19 +1,18 @@
-import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import LoginForm from "@/components/login-form";
-import { authOptions, isDemoAuthEnabled, isGoogleAuthConfigured } from "@/lib/auth";
+import { isDemoAuthEnabled, isGoogleAuthConfigured } from "@/lib/auth";
+import { getAuthSession } from "@/lib/auth-session";
 
 interface LoginPageProps {
   searchParams?: Record<string, string | string[] | undefined>;
 }
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
-  const session = await getServerSession(authOptions);
+  const session = await getAuthSession();
   const nextParam = searchParams?.next;
-  const callbackUrl =
-    (Array.isArray(nextParam) ? nextParam[0] : nextParam) || "/my-bot";
+  const callbackUrl = (Array.isArray(nextParam) ? nextParam[0] : nextParam) || "/my-bot";
 
-  if (session?.user?.email) {
+  if (session?.email) {
     redirect(callbackUrl);
   }
 

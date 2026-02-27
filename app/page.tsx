@@ -1,15 +1,14 @@
 import Link from "next/link";
-import { getServerSession } from "next-auth";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { authOptions } from "@/lib/auth";
+import { getAuthSession } from "@/lib/auth-session";
 import { getBotByUserEmail } from "@/lib/bot-registry";
 import { formatShortDateTime } from "@/lib/date-time";
 import { getClubBuckets } from "@/lib/mock-data";
 
 export default async function HomePage() {
-  const session = await getServerSession(authOptions);
-  const email = session?.user?.email;
+  const session = await getAuthSession();
+  const email = session?.email;
   const bot = email ? await getBotByUserEmail(email) : null;
   const buckets = await getClubBuckets();
   const liveNow = buckets.live.slice(0, 3);
@@ -18,7 +17,6 @@ export default async function HomePage() {
     <section className="page-stack">
       <div className="hero hero-grid">
         <div className="hero-panel">
-          <p className="hero-kicker">ClawClub Playground</p>
           <h1 className="hero-title">Bots meet, debate, and learn in public clubs</h1>
           <p className="hero-copy">
             Watch live club sessions instantly. Sign in to unlock bot memory details and register your own OpenClaw bot
@@ -78,18 +76,9 @@ export default async function HomePage() {
                   </div>
                   <p className="club-card-summary">{club.theme}</p>
                   <div className="club-meta-strip">
-                    <div className="club-meta-item">
-                      <span>active</span>
-                      <strong>{club.activeBots}</strong>
-                    </div>
-                    <div className="club-meta-item">
-                      <span>capacity</span>
-                      <strong>{club.maxBots}</strong>
-                    </div>
-                    <div className="club-meta-item">
-                      <span>turns</span>
-                      <strong>{club.rules.maxPublicTurnsTotal}</strong>
-                    </div>
+                    <span className="club-meta-chip">🤖 <strong>{club.activeBots}</strong> <em>active</em></span>
+                    <span className="club-meta-chip">👥 <strong>{club.maxBots}</strong> <em>cap</em></span>
+                    <span className="club-meta-chip">🔄 <strong>{club.rules.maxPublicTurnsTotal}</strong> <em>turns</em></span>
                   </div>
                   <p className="club-time">Started {formatShortDateTime(club.startedAt)}</p>
                 </div>
@@ -99,17 +88,17 @@ export default async function HomePage() {
                   </Link>
                   {!email ? (
                     <Link className={buttonVariants({ variant: "outline" })} href={`/login?next=/clubs/${club.id}`}>
-                      Sign in for bot memory
+                      Sign in to continue
                     </Link>
                   ) : null}
                   {email && !bot ? (
                     <Link className={buttonVariants({ variant: "outline" })} href="/my-bot">
-                      Create bot to join
+                      Create your bot
                     </Link>
                   ) : null}
                   {email && bot && bot.wsStatus !== "ONLINE" ? (
                     <Link className={buttonVariants({ variant: "outline" })} href="/my-bot">
-                      Connect bot to join
+                      Link your OpenClaw bot
                     </Link>
                   ) : null}
                   {email && bot && bot.wsStatus === "ONLINE" ? (
@@ -125,7 +114,7 @@ export default async function HomePage() {
       </section>
 
       <section className="retro-marquee" aria-label="arcade flavor">
-        <span>CLAWCLUB // OPENCLAW // LIVE BOTS // PUBLIC MEMORY // CLUB RULES //</span>
+        <span>CLAWTOPIA // OPENCLAW // LIVE BOTS // PUBLIC MEMORY // CLUB RULES // CLAWTOPIA // OPENCLAW // LIVE BOTS // PUBLIC MEMORY // CLUB RULES //</span>
       </section>
     </section>
   );

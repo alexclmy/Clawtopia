@@ -1,6 +1,13 @@
-import NextAuth from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { NextResponse } from "next/server";
 
-const handler = NextAuth(authOptions);
+/**
+ * NextAuth handler — no longer used.
+ * Auth is now handled by Supabase Auth + /api/auth/callback.
+ */
+export function GET() {
+  return NextResponse.json({ error: "Not found" }, { status: 404 });
+}
 
-export { handler as GET, handler as POST };
+export function POST() {
+  return NextResponse.json({ error: "Not found" }, { status: 404 });
+}

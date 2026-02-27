@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
 import { isClubAdminEmail } from "@/lib/admin";
-import { authOptions } from "@/lib/auth";
+import { getAuthSession } from "@/lib/auth-session";
 import { createClub, listAllClubsForAdmin, type CreateClubInput } from "@/lib/mock-data";
 import type { AlternanceMode, ClubRules, ClubStatus } from "@/types/clawclub";
 
@@ -9,26 +8,17 @@ const allowedStatuses: ClubStatus[] = ["SCHEDULED", "RUNNING", "PAUSED", "ENDING
 const allowedAlternance: AlternanceMode[] = ["RANDOM", "ROUND_ROBIN"];
 
 function parseStatus(value: unknown): ClubStatus | null {
-  if (typeof value !== "string") {
-    return null;
-  }
-
+  if (typeof value !== "string") return null;
   return allowedStatuses.includes(value as ClubStatus) ? (value as ClubStatus) : null;
 }
 
 function parseAlternance(value: unknown): AlternanceMode | null {
-  if (typeof value !== "string") {
-    return null;
-  }
-
+  if (typeof value !== "string") return null;
   return allowedAlternance.includes(value as AlternanceMode) ? (value as AlternanceMode) : null;
 }
 
 function parseRules(value: unknown): ClubRules | null {
-  if (!value || typeof value !== "object") {
-    return null;
-  }
-
+  if (!value || typeof value !== "object") return null;
   const raw = value as Record<string, unknown>;
   const maxPublicTurnsTotal = Number(raw.maxPublicTurnsTotal);
   const maxMessageChars = Number(raw.maxMessageChars);
@@ -48,21 +38,11 @@ function parseRules(value: unknown): ClubRules | null {
     return null;
   }
 
-  return {
-    maxPublicTurnsTotal,
-    maxMessageChars,
-    pairCooldownSec,
-    moveTickMs,
-    encounterRadius,
-    encounterChance
-  };
+  return { maxPublicTurnsTotal, maxMessageChars, pairCooldownSec, moveTickMs, encounterRadius, encounterChance };
 }
 
 function parseCreatePayload(value: unknown): CreateClubInput | null {
-  if (!value || typeof value !== "object") {
-    return null;
-  }
-
+  if (!value || typeof value !== "object") return null;
   const raw = value as Record<string, unknown>;
   const name = typeof raw.name === "string" ? raw.name.trim() : "";
   const theme = typeof raw.theme === "string" ? raw.theme.trim() : "";
@@ -74,35 +54,16 @@ function parseCreatePayload(value: unknown): CreateClubInput | null {
   const maxBots = Number(raw.maxBots);
   const rules = parseRules(raw.rules);
 
-  if (!name || name.length > 80 || !theme || theme.length > 240) {
-    return null;
-  }
+  if (!name || name.length > 80 || !theme || theme.length > 240) return null;
+  if (!status || !alternanceMode || !startedAt || !rules) return null;
+  if (!Number.isFinite(requiredClaws) || !Number.isFinite(durationHours) || !Number.isFinite(maxBots)) return null;
 
-  if (!status || !alternanceMode || !startedAt || !rules) {
-    return null;
-  }
-
-  if (!Number.isFinite(requiredClaws) || !Number.isFinite(durationHours) || !Number.isFinite(maxBots)) {
-    return null;
-  }
-
-  return {
-    name,
-    theme,
-    status,
-    alternanceMode,
-    startedAt,
-    requiredClaws,
-    durationHours,
-    maxBots,
-    rules
-  };
+  return { name, theme, status, alternanceMode, startedAt, requiredClaws, durationHours, maxBots, rules };
 }
 
 async function requireAdmin() {
-  const session = await getServerSession(authOptions);
-  const email = session?.user?.email;
-  return isClubAdminEmail(email);
+  const session = await getAuthSession();
+  return isClubAdminEmail(session?.email);
 }
 
 export async function GET() {

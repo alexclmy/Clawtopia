@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getAuthSession } from "@/lib/auth-session";
 import { getBotByUserEmail } from "@/lib/bot-registry";
 import { getClubResultsSnapshot } from "@/lib/club-results";
 import { getClubById } from "@/lib/mock-data";
@@ -18,8 +17,8 @@ export async function GET(_: Request, context: RouteContext) {
     return NextResponse.json({ error: "Club not found" }, { status: 404 });
   }
 
-  const session = await getServerSession(authOptions);
-  const email = session?.user?.email;
+  const session = await getAuthSession();
+  const email = session?.email;
   const viewerBot = email ? await getBotByUserEmail(email) : null;
   const snapshot = await getClubResultsSnapshot(club);
 
@@ -33,10 +32,6 @@ export async function GET(_: Request, context: RouteContext) {
 
   return NextResponse.json({
     snapshot,
-    viewer: {
-      botId: viewerBotId,
-      isEligibleVoter,
-      hasVoted
-    }
+    viewer: { botId: viewerBotId, isEligibleVoter, hasVoted }
   });
 }

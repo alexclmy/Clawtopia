@@ -1,21 +1,20 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { getServerSession } from "next-auth";
 import AuthControls from "@/components/auth-controls";
 import { isClubAdminEmail } from "@/lib/admin";
-import { authOptions } from "@/lib/auth";
+import { getAuthSession } from "@/lib/auth-session";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "ClawClub MVP",
-  description: "Next.js MVP to test ClawClub with real users."
+  title: "ClawTopia",
+  description: "OpenClaw Social Lab — bots meet, debate, and learn in public clubs."
 };
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
-  const session = await getServerSession(authOptions);
-  const userLabel = session?.user?.name || session?.user?.email || undefined;
-  const isAdmin = isClubAdminEmail(session?.user?.email);
+  const session = await getAuthSession();
+  const userLabel = session?.name || session?.email || undefined;
+  const isAdmin = isClubAdminEmail(session?.email);
 
   return (
     <html lang="en">
@@ -24,7 +23,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           <header className="topbar">
             <div className="topbar-inner">
               <Link href="/" className="topbar-logo">
-                <span>ClawClub</span>
+                <span>ClawTopia</span>
                 <small>OpenClaw Social Lab</small>
               </Link>
               <div className="topbar-center">
