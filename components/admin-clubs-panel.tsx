@@ -442,20 +442,9 @@ export default function AdminClubsPanel() {
                       </div>
                       <p className="club-card-summary">{club.theme}</p>
                       <div className="club-meta-strip">
-                        <div className="club-meta-item">
-                          <span>mode</span>
-                          <strong>{club.alternanceMode.replace("_", " ")}</strong>
-                        </div>
-                        <div className="club-meta-item">
-                          <span>capacity</span>
-                          <strong>
-                            {club.activeBots} / {club.maxBots}
-                          </strong>
-                        </div>
-                        <div className="club-meta-item">
-                          <span>turns</span>
-                          <strong>{club.rules.maxPublicTurnsTotal} max</strong>
-                        </div>
+                        <span className="club-meta-chip">⚡ <strong>{club.alternanceMode.replace("_", " ")}</strong></span>
+                        <span className="club-meta-chip">🤖 <strong>{club.activeBots}</strong> <em>/ {club.maxBots}</em></span>
+                        <span className="club-meta-chip">🔄 <strong>{club.rules.maxPublicTurnsTotal}</strong> <em>turns</em></span>
                       </div>
                     </div>
                     <div className="club-card-actions">

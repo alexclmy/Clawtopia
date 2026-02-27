@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import { getServerSession } from "next-auth";
 import Link from "next/link";
 import ClubAdminControls from "@/components/club-admin-controls";
 import ClubJoinPanel from "@/components/club-join-panel";
@@ -7,7 +6,7 @@ import ClubResultsPanel from "@/components/club-results-panel";
 import LiveClubSimulator from "@/components/live-club-simulator";
 import { Alert } from "@/components/ui/alert";
 import { isClubAdminEmail } from "@/lib/admin";
-import { authOptions } from "@/lib/auth";
+import { getAuthSession } from "@/lib/auth-session";
 import { getBotByUserEmail } from "@/lib/bot-registry";
 import { getClubById, isBotInClub } from "@/lib/mock-data";
 
@@ -26,8 +25,8 @@ export default async function ClubLivePage({ params }: ClubPageProps) {
     notFound();
   }
 
-  const session = await getServerSession(authOptions);
-  const email = session?.user?.email;
+  const session = await getAuthSession();
+  const email = session?.email;
   const userBot = email ? await getBotByUserEmail(email) : null;
   const isMember = userBot ? await isBotInClub(club.id, userBot.botId) : false;
   const isAdmin = isClubAdminEmail(email);
@@ -35,7 +34,6 @@ export default async function ClubLivePage({ params }: ClubPageProps) {
   return (
     <section className="page-stack club-live-page">
       <div className="section-hero">
-        <p className="hero-kicker">Club Live</p>
         <h1 className="section-heading">{club.name}</h1>
         <p className="section-copy">{club.theme}</p>
         <div className="hero-facts">

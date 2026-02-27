@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getAuthSession } from "@/lib/auth-session";
 import { getBotByUserEmail } from "@/lib/bot-registry";
 import { leaveClub } from "@/lib/mock-data";
 
@@ -11,8 +10,8 @@ interface RouteContext {
 }
 
 export async function POST(_: Request, context: RouteContext) {
-  const session = await getServerSession(authOptions);
-  const email = session?.user?.email;
+  const session = await getAuthSession();
+  const email = session?.email;
 
   if (!email) {
     return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
