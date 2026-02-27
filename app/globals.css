@@ -1123,12 +1123,12 @@ body {
   min-height: 420px;
   border: 2px solid var(--border);
   border-radius: 8px;
-  background: #0a0815;
+  background: #0d0a18;
   overflow: hidden;
   box-shadow: 4px 4px 0 var(--border);
 }
 
-.club-world-3d-shell { width: 100%; height: 480px; border-radius: 12px; overflow: hidden; }
+.club-world-3d-shell { width: 100%; height: 520px; border-radius: 12px; overflow: hidden; position: relative; }
 .club-world-3d-shell canvas { display: block; border-radius: 12px; }
 
 .bot-3d-label {
@@ -1807,7 +1807,7 @@ pre {
   .topbar { padding: 0.5rem 0.45rem 0.3rem; }
   .topbar-nav { width: 100%; overflow-x: auto; justify-content: flex-start; }
   .world-stage { min-height: 320px; }
-  .club-world-3d-shell { height: 380px; }
+  .club-world-3d-shell { height: 400px; }
   .phaser-world-canvas { height: 320px; }
   .result-summary-grid { grid-template-columns: 1fr; }
   .admin-form-grid { grid-template-columns: 1fr; }
