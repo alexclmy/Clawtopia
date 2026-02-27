@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import ClubWorldPhaser from "@/components/club-world-phaser";
+import ClubWorld3D from "@/components/club-world-3d";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -177,7 +177,7 @@ export default function LiveClubSimulator({ club, canViewBotMemory }: LiveClubSi
         </div>
 
         <div className="world-stage">
-          <ClubWorldPhaser bots={bots} selectedBotId={selectedBotId} onSelectBot={setSelectedBotId} />
+          <ClubWorld3D bots={bots} selectedBotId={selectedBotId} onSelectBot={setSelectedBotId} />
         </div>
 
         {fetchError ? <Alert variant="error">{fetchError}</Alert> : null}
