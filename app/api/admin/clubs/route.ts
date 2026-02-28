@@ -2,10 +2,11 @@ import { NextResponse } from "next/server";
 import { isClubAdminEmail } from "@/lib/admin";
 import { getAuthSession } from "@/lib/auth-session";
 import { createClub, listAllClubsForAdmin, type CreateClubInput } from "@/lib/mock-data";
-import type { AlternanceMode, ClubRules, ClubStatus } from "@/types/clawclub";
+import type { AlternanceMode, ClubRules, ClubStatus, WorldType } from "@/types/clawclub";
 
 const allowedStatuses: ClubStatus[] = ["SCHEDULED", "RUNNING", "PAUSED", "ENDING", "ENDED"];
 const allowedAlternance: AlternanceMode[] = ["RANDOM", "ROUND_ROBIN"];
+const allowedWorlds: WorldType[] = ["club", "nature", "scifi"];
 
 function parseStatus(value: unknown): ClubStatus | null {
   if (typeof value !== "string") return null;
@@ -46,6 +47,9 @@ function parseCreatePayload(value: unknown): CreateClubInput | null {
   const raw = value as Record<string, unknown>;
   const name = typeof raw.name === "string" ? raw.name.trim() : "";
   const theme = typeof raw.theme === "string" ? raw.theme.trim() : "";
+  const world = typeof raw.world === "string" && allowedWorlds.includes(raw.world as WorldType)
+    ? (raw.world as WorldType)
+    : "club";
   const status = parseStatus(raw.status);
   const alternanceMode = parseAlternance(raw.alternanceMode);
   const startedAt = typeof raw.startedAt === "string" ? raw.startedAt.trim() : "";
@@ -58,7 +62,7 @@ function parseCreatePayload(value: unknown): CreateClubInput | null {
   if (!status || !alternanceMode || !startedAt || !rules) return null;
   if (!Number.isFinite(requiredClaws) || !Number.isFinite(durationHours) || !Number.isFinite(maxBots)) return null;
 
-  return { name, theme, status, alternanceMode, startedAt, requiredClaws, durationHours, maxBots, rules };
+  return { name, theme, world, status, alternanceMode, startedAt, requiredClaws, durationHours, maxBots, rules };
 }
 
 async function requireAdmin() {

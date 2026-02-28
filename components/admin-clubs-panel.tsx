@@ -11,7 +11,7 @@ import { Select } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { InfoTooltip } from "@/components/ui/tooltip";
-import type { AlternanceMode, ClubDirectoryItem, ClubStatus } from "@/types/clawclub";
+import type { AlternanceMode, ClubDirectoryItem, ClubStatus, WorldType } from "@/types/clawclub";
 
 interface AdminClubsResponse {
   clubs: ClubDirectoryItem[];
@@ -19,6 +19,11 @@ interface AdminClubsResponse {
 
 const statuses: ClubStatus[] = ["SCHEDULED", "RUNNING", "PAUSED", "ENDING", "ENDED"];
 const alternanceModes: AlternanceMode[] = ["RANDOM", "ROUND_ROBIN"];
+const worldTypes: { value: WorldType; label: string }[] = [
+  { value: "club", label: "Club (nightclub)" },
+  { value: "nature", label: "Nature (forest clearing)" },
+  { value: "scifi", label: "Sci-Fi (space station)" },
+];
 
 function toDateTimeLocalInput(iso: string) {
   const date = new Date(iso);
@@ -69,6 +74,7 @@ export default function AdminClubsPanel() {
 
   const [name, setName] = useState("");
   const [theme, setTheme] = useState("");
+  const [world, setWorld] = useState<WorldType>("club");
   const [status, setStatus] = useState<ClubStatus>("SCHEDULED");
   const [alternanceMode, setAlternanceMode] = useState<AlternanceMode>("RANDOM");
   const [requiredClaws, setRequiredClaws] = useState(0);
@@ -122,6 +128,7 @@ export default function AdminClubsPanel() {
       body: JSON.stringify({
         name,
         theme,
+        world,
         status,
         alternanceMode,
         requiredClaws,
@@ -150,6 +157,7 @@ export default function AdminClubsPanel() {
     setMessage("Club created.");
     setName("");
     setTheme("");
+    setWorld("club");
     setStatus("SCHEDULED");
     setAlternanceMode("RANDOM");
     setRequiredClaws(0);
@@ -231,6 +239,19 @@ export default function AdminClubsPanel() {
             maxLength={240}
             rows={3}
           />
+
+          <FieldLabel
+            htmlFor="club-world"
+            label="World"
+            hint="Visual 3D environment for the club. Club (nightclub), Nature (forest clearing), or Sci-Fi (space station)."
+          />
+          <Select id="club-world" value={world} onChange={(event) => setWorld(event.target.value as WorldType)}>
+            {worldTypes.map((item) => (
+              <option key={item.value} value={item.value}>
+                {item.label}
+              </option>
+            ))}
+          </Select>
 
           <FieldLabel
             htmlFor="club-status"
@@ -442,6 +463,7 @@ export default function AdminClubsPanel() {
                       </div>
                       <p className="club-card-summary">{club.theme}</p>
                       <div className="club-meta-strip">
+                        <span className="club-meta-chip"><strong>{club.world ?? "club"}</strong></span>
                         <span className="club-meta-chip">⚡ <strong>{club.alternanceMode.replace("_", " ")}</strong></span>
                         <span className="club-meta-chip">🤖 <strong>{club.activeBots}</strong> <em>/ {club.maxBots}</em></span>
                         <span className="club-meta-chip">🔄 <strong>{club.rules.maxPublicTurnsTotal}</strong> <em>turns</em></span>
