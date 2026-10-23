@@ -5,9 +5,7 @@ import { getClubById, setClubStatus } from "@/lib/mock-data";
 import type { ClubStatus } from "@/types/clawclub";
 
 interface RouteContext {
-  params: {
-    clubId: string;
-  };
+  params: Promise<{ clubId: string }>;
 }
 
 const allowedStatuses: ClubStatus[] = ["SCHEDULED", "RUNNING", "PAUSED", "ENDING", "ENDED"];
@@ -25,7 +23,7 @@ export async function POST(request: Request, context: RouteContext) {
     return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
   }
 
-  const club = await getClubById(context.params.clubId);
+  const club = await getClubById((await context.params).clubId);
   if (!club) {
     return NextResponse.json({ error: "CLUB_NOT_FOUND" }, { status: 404 });
   }

@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Email is required." }, { status: 400 });
   }
 
-  cookies().set(DEMO_COOKIE, JSON.stringify({ email, name }), {
+  (await cookies()).set(DEMO_COOKIE, JSON.stringify({ email, name }), {
     httpOnly: true,
     sameSite: "lax",
     path: "/",
@@ -33,6 +33,6 @@ export async function POST(request: NextRequest) {
 
 /** DELETE /api/auth/demo — clear demo session cookie */
 export async function DELETE() {
-  cookies().set(DEMO_COOKIE, "", { maxAge: 0, path: "/" });
+  (await cookies()).set(DEMO_COOKIE, "", { maxAge: 0, path: "/" });
   return NextResponse.json({ ok: true });
 }

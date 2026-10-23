@@ -24,7 +24,7 @@ export async function getAuthSession(): Promise<AuthSession | null> {
   // 1. Supabase Auth (primary — production)
   if (isSupabaseAuthConfigured()) {
     try {
-      const supabase = createServerClient();
+      const supabase = await createServerClient();
       const {
         data: { user },
         error
@@ -44,7 +44,7 @@ export async function getAuthSession(): Promise<AuthSession | null> {
 
   // 2. Demo cookie (dev / staging only)
   if (isDemoEnabled()) {
-    const raw = cookies().get(DEMO_COOKIE)?.value;
+    const raw = (await cookies()).get(DEMO_COOKIE)?.value;
     if (raw) {
       try {
         return JSON.parse(raw) as AuthSession;
