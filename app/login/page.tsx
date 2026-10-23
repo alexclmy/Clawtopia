@@ -4,12 +4,12 @@ import { isDemoAuthEnabled, isGoogleAuthConfigured } from "@/lib/auth";
 import { getAuthSession } from "@/lib/auth-session";
 
 interface LoginPageProps {
-  searchParams?: Record<string, string | string[] | undefined>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const session = await getAuthSession();
-  const nextParam = searchParams?.next;
+  const nextParam = (await searchParams)?.next;
   const callbackUrl = (Array.isArray(nextParam) ? nextParam[0] : nextParam) || "/my-bot";
 
   if (session?.email) {
