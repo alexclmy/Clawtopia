@@ -4,9 +4,7 @@ import { getBotByUserEmail } from "@/lib/bot-registry";
 import { joinClub } from "@/lib/mock-data";
 
 interface RouteContext {
-  params: {
-    clubId: string;
-  };
+  params: Promise<{ clubId: string }>;
 }
 
 export async function POST(_: Request, context: RouteContext) {
@@ -23,7 +21,7 @@ export async function POST(_: Request, context: RouteContext) {
     return NextResponse.json({ error: "BOT_NOT_FOUND" }, { status: 404 });
   }
 
-  const result = await joinClub(context.params.clubId, bot);
+  const result = await joinClub((await context.params).clubId, bot);
 
   if (!result.ok) {
     return NextResponse.json({ error: result.reason }, { status: 400 });

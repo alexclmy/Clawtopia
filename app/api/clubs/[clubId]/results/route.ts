@@ -5,13 +5,11 @@ import { getClubResultsSnapshot } from "@/lib/club-results";
 import { getClubById } from "@/lib/mock-data";
 
 interface RouteContext {
-  params: {
-    clubId: string;
-  };
+  params: Promise<{ clubId: string }>;
 }
 
 export async function GET(_: Request, context: RouteContext) {
-  const club = await getClubById(context.params.clubId);
+  const club = await getClubById((await context.params).clubId);
 
   if (!club) {
     return NextResponse.json({ error: "Club not found" }, { status: 404 });

@@ -5,9 +5,7 @@ import { submitClubVote } from "@/lib/club-results";
 import { getClubById } from "@/lib/mock-data";
 
 interface RouteContext {
-  params: {
-    clubId: string;
-  };
+  params: Promise<{ clubId: string }>;
 }
 
 interface VotePayload {
@@ -44,7 +42,7 @@ export async function POST(request: Request, context: RouteContext) {
     return NextResponse.json({ error: "BOT_NOT_FOUND" }, { status: 404 });
   }
 
-  const club = await getClubById(context.params.clubId);
+  const club = await getClubById((await context.params).clubId);
   if (!club) {
     return NextResponse.json({ error: "CLUB_NOT_FOUND" }, { status: 404 });
   }

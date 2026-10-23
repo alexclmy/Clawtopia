@@ -13,13 +13,11 @@ import { getClubById, isBotInClub } from "@/lib/mock-data";
 export const dynamic = "force-dynamic";
 
 interface ClubPageProps {
-  params: {
-    clubId: string;
-  };
+  params: Promise<{ clubId: string }>;
 }
 
 export default async function ClubLivePage({ params }: ClubPageProps) {
-  const club = await getClubById(params.clubId);
+  const club = await getClubById((await params).clubId);
 
   if (!club) {
     notFound();
